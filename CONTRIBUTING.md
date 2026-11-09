@@ -1,87 +1,68 @@
-# Contribuindo / Contributing
+# Contributing
 
-🇧🇷 Obrigado pelo interesse em contribuir! · 🇺🇸 Thanks for your interest in contributing!
+🇺🇸 Thanks for your interest in contributing! · 🇧🇷 Obrigado pelo interesse em contribuir!
 
-## Formas de contribuir / Ways to contribute
+## Ways to Contribute
 
-### 🚗 Reportar nova safra Honda / Report a new Honda firmware
+### 🚗 Report a New Honda Firmware Variant
 
-**O MAIS VALIOSO.** Quanto mais safras documentadas, mais útil o projeto. Use o template [`nova-safra.md`](.github/ISSUE_TEMPLATE/nova-safra.md).
+**THE MOST VALUABLE CONTRIBUTION.** The more firmware revisions documented, the more universally useful this project becomes. Use the [`nova-safra.md`](.github/ISSUE_TEMPLATE/nova-safra.md) template.
 
-Mesmo que você não tenha tentado deployar — só os dados técnicos (DA version, rom_type, device, resolução, combo de cold boot) já ajudam a construir uma matriz de compatibilidade.
+Even if you haven't attempted to deploy — basic technical data (DA version, `custom_rom.type`, device model, screen resolution, cold boot key combination) helps construct a comprehensive compatibility matrix.
 
-### 🐛 Bug reports
+### 🐛 Bug Reports
 
-Template [`bug-report.md`](.github/ISSUE_TEMPLATE/bug-report.md). Logs são essenciais — sem logs, difícil debugar.
+Please use the [`bug-report.md`](.github/ISSUE_TEMPLATE/bug-report.md) template. Logs are vital — without logcat or deployment output, issues are difficult to diagnose.
 
-### 🌍 Tradução / Translation
+### 🌍 Translations
 
-- 🇧🇷 Portuguese: `docs/pt-BR/` (fonte original)
-- 🇺🇸 English: `docs/en/` (resumo, precisa de tradução completa)
-- 🇪🇸 Spanish? 🇯🇵 Japanese? 🇨🇳 Chinese? — abra PR com `docs/<lang>/`
+- 🇺🇸 English: `docs/en/` (primary documentation)
+- 🇧🇷 Portuguese: `docs/pt-BR/` (original source research)
+- Other languages: open a pull request with a new `docs/<lang>/` folder.
 
-Prioridade: **tradução completa para inglês** do `docs/pt-BR/`.
+### 💡 Technical Enhancements & Next Steps
 
-### 💡 Melhorias técnicas
+Living roadmap: [`ROADMAP.md`](ROADMAP.md). Platform discoveries index (AIDL interfaces, broadcasts, trust map) in [`DISCOVERIES.md`](DISCOVERIES.md).
 
-Roadmap vivo: [`ROADMAP.md`](ROADMAP.md). Catálogo dos achados (plataforma mapeada, APIs AIDL, broadcasts, trust map) em [`DISCOVERIES.md`](DISCOVERIES.md).
+Current roadmap candidates:
+- **Phase 9**: Native reverse camera detection via `ICameraAPServiceReverseSignalListener` (replaces logcat polling).
+- **Validation**: Confirm `DISCLAIMER_COMPLETE` as the canonical dismissal signal across all states.
+- **Whitelist Carrier**: Dump binary `com.honda.displayaudio.whitelist.apk`.
+- **Property testing**: Evaluate `persist.sys.keyoff_reboot=1` to simplify power states.
 
-Resumo dos candidatos atuais:
+### 📊 Dumps from Other Trims/Firmware
 
-- Fase 9 — câmera de ré via `ICameraAPServiceReverseSignalListener` (sem logcat polling)
-- Validar `DISCLAIMER_COMPLETE` como sinal canônico
-- Dumpar `com.honda.displayaudio.whitelist.apk` real
-- Testar `persist.sys.keyoff_reboot=1` como alternativa ao fluxo LP0
+If you have access to a Honda head unit with a different firmware build, create a dump using our diagnostic/deep-scan package.
 
-Caminhos descartados (com motivo) também vivem no ROADMAP — ler antes de propor para evitar reinventar.
+> **DO NOT upload proprietary firmware dumps directly to GitHub.** You may share sanitized extracts (e.g. system properties, package lists, decompiled structural definitions) in issues.
 
-### 📊 Dumps de outras safras
+---
 
-Se você tem acesso a HU com safra diferente, dump via o pacote de dump do nosso build. Instruções em [`docs/fase7-deploy-2026-10-16/06-dumps-obtidos.md § Como re-dumpar`](docs/fase7-deploy-2026-10-16/06-dumps-obtidos.md#como-re-dumpar).
-
-**NÃO fazer upload dos dumps no repo** (firmware Honda é proprietário). Mas pode compartilhar extratos relevantes (strings, build.props) em issues.
-
-## Padrões de código / Code standards
+## Code Standards
 
 ### Commits
+- Clear, descriptive messages.
+- Imperative mood ("add X", "fix Y", "update Z").
 
-- **Mensagens em português no imperativo**: "corrige X", "adiciona Y", "atualiza Z"
-- Primeira linha ≤ 72 chars
-- Descrição opcional abaixo com contexto
-- Sem comentários de linha nos códigos (`//`, `#`, `/* */`) a menos que seja estritamente necessário — nomes bem escolhidos > comentário
-
-### Pull requests
-
-- Branch descritiva: `feat/<descrição>`, `fix/<descrição>`, `docs/<descrição>`
-- Descreva o que + por quê (não só o diff — ele mostra o o quê)
-- Vincule issue relacionado
-- Documentação sempre atualizada junto com código
+### Pull Requests
+- Descriptive branch naming: `feat/<name>`, `fix/<name>`, `docs/<name>`.
+- Explain both **what** changed and **why**.
+- Keep documentation updated alongside any code changes.
 
 ### Python
+- Python 3.10+ compatible.
+- Tested via `python3 -m unittest discover -s tooling/ota-build/tests`.
 
-- Python 3.13+ (nosso build.py usa 3.13 features)
-- Formatação: aceitamos qualquer coisa coerente, não usamos linter rígido
+### Java (AutoOk APK)
+- Java 1.8 target, Android API 17 (Android 4.2.2 compatibility).
+- Use named inner classes (anonymous inner classes can crash legacy D8 toolchains).
 
-### Java (APK)
+---
 
-- Java 1.8 target
-- Android SDK API 17 (Android 4.2.2)
-- Named inner classes sempre (anonymous crasha o D8 em certos padrões)
+## Code of Conduct
 
-### Markdown
+Please be respectful and constructive. We are a specialized open-source research community passionate about exploring and improving automotive head units.
 
-- Marcadores internos usando `##` como primeiro nível (`#` é reservado pro título do doc)
-- Preferência por tabelas quando é dado tabular
-- Linhas duras ≤ 100 chars (não hard)
+## License
 
-## Code of conduct
-
-Seja respeitoso. Comunidade pequena, projeto de nicho — todo mundo aqui gosta do mesmo carro.
-
-Zero tolerância para: discriminação, assédio, spam.
-
-## Licença
-
-Ao contribuir com código, você concorda que seu código será licenciado sob MIT (ver `LICENSE`). Documentação sob CC BY 4.0.
-
-Você mantém direitos autorais sobre seu trabalho — só cede permissão de uso.
+Code contributions are licensed under the [MIT License](LICENSE). Documentation is provided under CC BY 4.0.

@@ -1,147 +1,125 @@
-# Descobertas técnicas
+# Technical Discoveries
 
-> Índice navegável dos achados sobre a central Mitsubishi Andromeda / Honda Civic G10, feitos ao longo das fases do projeto. Cada item linka pro doc denso onde a evidência está.
+> Navigable index of findings regarding the Mitsubishi Andromeda / Honda Civic G10 head unit, discovered across all project phases. Each entry links directly to the detailed documentation containing full evidence.
 >
-> Isto não é tutorial. Pra deployar na sua central, [`QUICKSTART.md`](QUICKSTART.md). Pra entender o estado atual + próximos passos, [`ROADMAP.md`](ROADMAP.md). Pra ver o atlas completo da central (partições, APKs, services, pipeline), [`docs/MAPA.md`](docs/MAPA.md).
+> *Language:* 🇺🇸 **English** · [🇧🇷 Português](DISCOVERIES.pt-BR.md)
+>
+> This is not a tutorial. To deploy to your head unit, see [`QUICKSTART.md`](QUICKSTART.md). To see current status + next steps, see [`ROADMAP.md`](ROADMAP.md). For the complete platform atlas (partitions, APKs, services, pipeline), see [`docs/MAPA.md`](docs/MAPA.md) / [`docs/en/MAP.md`](docs/en/MAP.md).
 
-## Plataforma (como ela funciona por dentro)
+---
 
-Mapeamento estático completo feito via REA + JADX sobre 160 APKs/libs do dump 0040. Os datasets são reutilizáveis pra qualquer central Mitsubishi Andromeda com mesmo framework.
+## The Platform (Internal Architecture)
 
-| O que | Quantidade | Doc |
+Full static mapping performed via REA + JADX across 160 APKs/libs from dump 0040. These datasets are reusable for any Mitsubishi Andromeda head unit sharing the same framework.
+
+| Metric | Quantity | Documentation |
 |---|---|---|
-| Interfaces AIDL (binder internas) | 364 em 63 domínios | [`docs/raio-x/01-apis-aidl.md`](docs/raio-x/01-apis-aidl.md) |
-| Broadcasts `com.mitsubishielectric.*` / `com.honda.*` | 445 em 48 prefixos | [`docs/raio-x/02-broadcasts.md`](docs/raio-x/02-broadcasts.md) |
-| ContentProviders (authorities) | 27 (9 vendor + 18 AOSP) | [`docs/raio-x/03-content-providers.md`](docs/raio-x/03-content-providers.md) |
-| System properties referenciadas | 48 | [`docs/raio-x/04-system-properties.md`](docs/raio-x/04-system-properties.md) |
-| APKs do shipping (vendor + system) | 110 (11 com `android.uid.system`) | [`docs/raio-x/05-trust-map.md`](docs/raio-x/05-trust-map.md) |
+| Internal AIDL Interfaces (Binder IPC) | 364 across 63 domains | [`docs/en/raio-x/01-apis-aidl.md`](docs/en/raio-x/01-apis-aidl.md) |
+| Broadcasts (`com.mitsubishielectric.*` / `com.honda.*`) | 445 across 48 prefixes | [`docs/en/raio-x/02-broadcasts.md`](docs/en/raio-x/02-broadcasts.md) |
+| ContentProviders (Authorities) | 27 (9 vendor + 18 AOSP) | [`docs/en/raio-x/03-content-providers.md`](docs/en/raio-x/03-content-providers.md) |
+| System Properties Referenced | 48 across 4 prefixes | [`docs/en/raio-x/04-system-properties.md`](docs/en/raio-x/04-system-properties.md) |
+| Shipping APKs (vendor + system) | 110 (11 running as `android.uid.system`) | [`docs/en/raio-x/05-trust-map.md`](docs/en/raio-x/05-trust-map.md) |
 
-## PowerManager — como a central realmente se recupera de LP0
+---
 
-O PowerManager Mitsubishi **não mantém lista** de serviços HMI. Ele é pub/sub puro: emite 16 broadcasts em pontos chave do ciclo de power, qualquer app com receiver registrado participa.
+## PowerManager — How the Head Unit Recovers from LP0 Suspend
 
-- **16 broadcasts do `PowerManagerBroadcastSender`** mapeados (start, stop, pre-stop, restart + 10 variantes de parada por fase + resume camera + animation + VBUS)
-- **33 APKs do shipping** escutam `ACTION_HMI_SERVICE_START` — é o contrato universal
-- **Causas conhecidas de startup**: `"ColdBoot"`, `"ExitLP0"`, `"AccOnRestart"`
-- **Nossa v0.4.0 do AutoOk** usa esse pattern (`HmiServiceReceiver`) — é o jeito oficial, não workaround
+The Mitsubishi PowerManager **does not maintain an internal list** of active HMI services. It operates purely as pub/sub: it emits 16 broadcasts at key power cycle transitions, and any app with a registered receiver responds.
 
-→ [`docs/MAPA.md` §11.6](docs/MAPA.md), [`docs/whitelist-mitsubishi-2026-10-19.md` §6](docs/whitelist-mitsubishi-2026-10-19.md)
+- **16 broadcasts from `PowerManagerBroadcastSender`** mapped (start, stop, pre-stop, restart + 10 phase-specific shutdown variants + camera resume + animation + VBUS).
+- **33 shipping APKs** listen for `ACTION_HMI_SERVICE_START` — this is the universal contract.
+- **Known startup trigger causes**: `"ColdBoot"`, `"ExitLP0"`, `"AccOnRestart"`.
+- **AutoOk v0.4.0+** uses this exact pattern (`HmiServiceReceiver`) — it aligns with the official platform paradigm rather than a hacky polling loop.
 
-## Whitelist Mitsubishi — fluxo completo
+→ See [`docs/MAPA.md §11.6`](docs/MAPA.md) and [`docs/en/whitelist-mitsubishi-2026-10-19.md §6`](docs/en/whitelist-mitsubishi-2026-10-19.md).
 
-A "whitelist Mitsubishi" aparece em várias análises de projetos vizinhos (ex: `codeage/root-honda`) como mecanismo de controle, mas **ela é só UX de instalação de apps**. Só `AppManager.apk` (gerenciador oficial) e `FileManager.apk` consomem via binder. Nenhum HMI service, nenhum PowerManager a consulta.
+---
 
-Mapeado em detalhe:
-- APK shell: `com.mitsubishielectric.ada.appservice.whitelist` (roda como `android.uid.system`)
-- Lógica real: `WhitelistLib.jar` em `vendor-framework/` (15 classes)
-- APK portador do XML: `com.honda.displayaudio.whitelist.apk` (14 KB, em `/system/vendor/etc/honda/`)
-- XML em runtime: `/data/data/whitelist-1.0.xml`
-- Interface AIDL com 7 métodos: `checkInstallPackage`, `getPackageNames`, `getApplicationName`, `getAudioInfo`, `getAudioStreamType`, `getRegulation`, `getRevert`
-- Formato do XML (`<package>`, `<keyStore>`, `<versionCode>`, `<regulation>`, `<revert>`, `<audioStreamType>`, `<withAudio>`) totalmente mapeado
+## Mitsubishi Whitelist — End-to-End Mechanism
 
-→ [`docs/whitelist-mitsubishi-2026-10-19.md`](docs/whitelist-mitsubishi-2026-10-19.md)
+The "Mitsubishi Whitelist" frequently appears in adjacent reverse engineering projects (e.g. `codeage/root-honda`) as an assumed security control mechanism. However, **it is purely an app installation UX filter**. Only `AppManager.apk` (official installer) and `FileManager.apk` query it via binder IPC. No HMI services or PowerManager routines consult it.
 
-## Fluxo do aviso (`OpeningDivideActivity`) por dentro
+Detailed mapping:
+- Shell APK: `com.mitsubishielectric.ada.appservice.whitelist` (runs as `android.uid.system`).
+- Core logic: `WhitelistLib.jar` in `vendor-framework/` (15 classes).
+- XML carrier APK: `com.honda.displayaudio.whitelist.apk` (14 KB, located at `/system/vendor/etc/honda/`).
+- Runtime XML: `/data/data/whitelist-1.0.xml`.
+- AIDL Interface exposing 7 methods: `checkInstallPackage`, `getPackageNames`, `getApplicationName`, `getAudioInfo`, `getAudioStreamType`, `getRegulation`, `getRevert`.
+- Full XML schema mapped (`<package>`, `<keyStore>`, `<versionCode>`, `<regulation>`, `<revert>`, `<audioStreamType>`, `<withAudio>`).
 
-O aviso que o projeto suprime é lançado por `com.mitsubishielectric.ada.app.dalauncher.Launcher$HMIServiceReceiver.onReceive()` ao receber o broadcast `ACTION_HMI_SERVICE_START` do PowerManager.
+→ See [`docs/en/whitelist-mitsubishi-2026-10-19.md`](docs/en/whitelist-mitsubishi-2026-10-19.md).
 
-- Activity principal: `com.mitsubishielectric.ada.app.dalauncher/.OpeningDivideActivity` (extends `HomeBaseActivity`)
-- Layout: `R.layout.opening_divide`
-- 14 classes referenciam a Activity (confirmado via `trace-android-references`)
-- 19 fields, 37 métodos públicos mapeados (incluindo `startNextActivity`, `createDisclaimerOnHomeIntent`, `antiTheftUnlockScreenTransition`)
-- `onCreate` decompilado — a lógica de "aceitou/não aceitou" vive em `DisclaimerFragment`
+---
 
-→ [`docs/MAPA.md` §11.1.1](docs/MAPA.md)
+## Warning Screen Flow (`OpeningDivideActivity`) Internals
 
-## Gate do disclaimer — `sDisclamerFlg` é static boolean em memória 🎯
+The warning disclaimer suppressed by this project is triggered by `com.mitsubishielectric.ada.app.dalauncher.Launcher$HMIServiceReceiver.onReceive()` upon receiving `ACTION_HMI_SERVICE_START` from the PowerManager.
 
-Descoberta de 2026-10-20 que viabilizou a Fase 10. Dentro de `OpeningDivideActivity`:
+- Main Activity: `com.mitsubishielectric.ada.app.dalauncher/.OpeningDivideActivity` (extends `HomeBaseActivity`).
+- Layout: `R.layout.opening_divide`.
+- 14 classes reference this Activity (confirmed via `trace-android-references`).
+- 19 fields and 37 public methods mapped (including `startNextActivity`, `createDisclaimerOnHomeIntent`, `antiTheftUnlockScreenTransition`).
+- Decompiled `onCreate` — the "accepted vs unaccepted" decision logic resides inside `DisclaimerFragment`.
 
-- Field: `public static sDisclamerFlg:Z` (static boolean, inicializado `false` no `<clinit>`)
-- **Não é persistido** em SharedPrefs, SQLite database nem system property — vive só em memória da classe
-- Reseta `false` a cada boot da classe (todo cold boot cria uma JVM nova) → por isso o aviso aparece sempre
-- Em `createDisclaimerOrEcoIntent()` (linha 869 do smali deodexado): testa o flag e decide entre `createDisclaimerOnHomeIntent()` (= `DisclaimerFragment`, o aviso) ou `createEcoIntent()` (= `EcoFragment`, caminho morto em uso real)
-- Como o flag sempre começa `false`, o caminho Eco **nunca** era alcançado neste carro
+→ See [`docs/MAPA.md §11.1.1`](docs/MAPA.md).
 
-**O patch da Fase 10:** uma instrução em `OpeningDivideActivity.smali:671`:
+---
 
-```diff
-     sget-boolean v0, Lcom/mitsubishielectric/ada/app/dalauncher/OpeningDivideActivity;->sDisclamerFlg:Z
+## The Disclaimer Gate — `sDisclamerFlg` is an In-Memory Static Boolean 🎯
 
--    if-nez v0, :cond_9
-+    goto :cond_9
+Breakthrough discovered on 2026-10-20 that unlocked **Phase 10**. Inside `OpeningDivideActivity`:
 
-     invoke-direct {p0}, Lcom/mitsubishielectric/ada/app/dalauncher/OpeningDivideActivity;->createDisclaimerOnHomeIntent()Landroid/content/Intent;
-```
+- Field: `public static sDisclamerFlg:Z` (static boolean, initialized to `false` in `<clinit>`).
+- **Never persisted** in SharedPrefs, SQLite, or system properties — it exists solely in class memory.
+- Resets to `false` on every class load (every cold boot spawns a fresh Dalvik JVM) → explains why the warning appears every single time the car turns on.
+- In `createDisclaimerOrEcoIntent()` (line 869 of deodexed smali): tests this flag and branches to either `createDisclaimerOnHomeIntent()` (`DisclaimerFragment`, the warning) or `createEcoIntent()` (`EcoFragment`, inert route in daily usage).
+- Because the launcher is signed with Mitsubishi vendor keys, we cannot simply re-sign with platform keys unless re-signed with the AOSP testkey accepted by the recovery!
+- **Phase 10 Smali Patch (1 instruction):** Change conditional jump `if-nez v0, :cond_9` to unconditional `goto :cond_9` at `OpeningDivideActivity.smali:671`.
+- When bypassed via `goto :cond_9`, it emits `DISCLAIMER_COMPLETE`, satisfying all downstream dependencies cleanly.
+- 4 other vendor APKs listen for `DISCLAIMER_COMPLETE`: `CameraAPService`, `SystemInfoService`, `VehicleCoordination`, `AcuraLinkApService`.
 
-Ignora o flag completamente, força o fluxo direto pro `createEcoIntent()`. Resultado observado no carro em 2026-10-29: o aviso nunca mais aparece, e a tela Eco (que ninguém tinha visto antes) acorda por ~6 s em cada boot.
+→ See [`docs/en/raio-x/07-services-re.md`](docs/en/raio-x/07-services-re.md) and [`docs/MAPA.md §11.1.1`](docs/MAPA.md).
 
-Um segundo patch (Fase 10.1, mesmo dia) em `EcoFragment.smali:3094` troca `const/16 v1, 0x1388` (5000 ms) por `const/16 v1, 0x1f4` (500 ms) no `startNoOperationTimer`, reduzindo a tela Eco para ~1 s mantendo as 4 chamadas pós-aviso (`DISCLAIMER_COMPLETE`, `setDisplayPermission`, `disclaimerDisappeared`, `setDisclaimerPassed`) intactas.
+---
 
-→ [`docs/MAPA.md` §16.4, §17.19](docs/MAPA.md) · [`docs/fase10-deploy-2026-10-29/`](docs/fase10-deploy-2026-10-29/)
+## Hall of Fame: Resolved Bugs & Fixes
 
-## Caminho Eco (`createEcoIntent`) — fluxo que existia mas nunca rodava
+14 critical bugs with identified root causes and documented fixes — valuable for anyone doing Mitsubishi RE:
 
-Confirmado nos logs do carro em 2026-10-29 (primeiro `OpeningDivideActivity.createEcoIntent():EcoStart!` da história deste HU, depois do patch). O `EcoFragment` é um fragment "irmão" do `DisclaimerFragment` dentro do mesmo caminho de boot:
+- **Logcat needle with `.` vs `/`**: ActivityManager prints `pkg/.ClassName`, not `pkg.ClassName`.
+- **APK dies after first tap**: `stopSelf()` after tap killed the background service; fixed by implementing `rearmWatcher()`.
+- **Rom_type `0040` discovery**: Discovered through trial-and-error across 352 OTA permutations until recovery accepted it.
+- **BR recovery lacks `/sbin/sh`**: Required embedding statically compiled ARM `busybox`.
+- **D8 dexer NullPointerException**: Anonymous inner classes caused crashes on older dexers; converted to explicit named inner classes.
+- **EPERM on logcat `Process.destroy()`**: Non-root apps cannot kill root processes; fixed in v0.3.0.
+- **APK unresponsive after LP0**: Logcat watcher child thread became zombie after system killed child; resolved in v0.4.0 with dedicated broadcast receiver.
 
-- Layout: `R.layout.opening_eco` (dois variantes: `mm_07_04_06.xml` e `mm_07_04_06_ziba.xml`, por tema de UI)
-- 3 barras de folhinhas (`LeafRatingBar`) mostrando o "ecoscore" da viagem
-- Inner classes `EcoFragment$1..$4` cuidam de timers e animações
-- Em `startNextActivity()` dispara as 4 chamadas que o DisclaimerFragment faria depois do tap do OK: `NavigationApService.disclaimerDisappeared`, `AppManagerService.setDisclaimerPassed(true)`, `CarPlayApService.setDisplayPermission(status=true)`, broadcast `DISCLAIMER_COMPLETE`
-- 4 receivers de `DISCLAIMER_COMPLETE` em `.odex` de outros apps vendor: `CameraAPService`, `SystemInfoService`, `VehicleCoordination`, `AcuraLinkApService`
+→ See [`docs/MAPA.md §17`](docs/MAPA.md).
 
-É por isso que a Fase 10 foi feita por `goto :cond_9` (destino Eco) e não por "pular tudo e ir pro Launcher principal": o Eco mantém o resto do sistema recebendo os sinais que esperam.
+---
 
-→ [`docs/raio-x/07-services-re.md`](docs/raio-x/07-services-re.md), [`docs/MAPA.md` §11.1.1](docs/MAPA.md)
+## Discarded Paths (and Why)
 
-## Hall of fame de bugs resolvidos
+Paths investigated, ruled out, and documented to avoid reinventing the wheel:
 
-14 bugs com causa raiz identificada e fix documentado — valioso pra quem está começando em RE Mitsubishi ou pra outros projetos adjacentes.
-
-Destaques:
-- **Needle do logcat com `.` vs `/`** — Activity Manager imprime `pkg/.ClassName`, não `pkg.ClassName`
-- **APK morre após 1º tap** — `stopSelf()` após o tap matava o Service; precisa `rearmWatcher()`
-- **Rom_type `0040` descoberto por trial-and-error** — 352 pacotes gerados até acertar
-- **Recovery BR sem `/sbin/sh`** — precisa embarcar busybox ARM estático
-- **D8 dexer NullPointerException** — anonymous inner classes crasham, precisa named inner classes
-- **EPERM em `Process.destroy()` do logcat** — user app não pode matar processo root; fix no v0.3.0
-- **APK fica inoperante após LP0** — Watcher thread zumbi após sistema matar o logcat child; fix no v0.4.0 com receiver
-
-→ [`docs/MAPA.md` §17](docs/MAPA.md)
-
-## Caminhos descartados (com motivo)
-
-Rotas investigadas, descartadas e preservadas pra não re-descobrir:
-
-| Rota | Por que descartada |
+| Route | Reason for Abandonment |
 |---|---|
-| **Entrar na whitelist Mitsubishi** pra remover workaround v0.4.0 | Whitelist é UX-only. Não afeta LP0. V0.4.0 já é o padrão oficial da plataforma. |
-| **SuperSU como mediator** | Nosso `su` é setuid simples. SuperSU substitui por um com prompt Activity → bloqueia nosso `Runtime.exec("su")` esperando toque humano = quebra o AutoOk. |
-| **Xposed Framework** | Patch de `/system/bin/app_process` é destrutivo. Zero precedente público em Mitsubishi Andromeda. Alto risco de bootloop recuperável só via OTA de rollback. |
-| ~~**Modificar `DaLauncher.apk` via smali**~~ | **Reaberta e concluída como Fase 10 em 2026-10-29** depois da descoberta do gate `sDisclamerFlg`. Patch de 1 instrução, resign com testkey AOSP, deploy OTA, rede de segurança testada em cima do mesmo pendrive. Risco mitigado com rollback no-op validado antes do install real. |
+| **Whitelisting in Mitsubishi whitelist** | Whitelist is UX-only for installations. Does not affect LP0. AutoOk v0.4.0 already follows official platform standards. |
+| **SuperSU as mediator** | Our `su` is a simple setuid binary. SuperSU introduces interactive UI prompts that block non-interactive `Runtime.exec("su")` calls, breaking automation. |
+| **Xposed Framework** | Modifying `/system/bin/app_process` is destructive. Zero public precedent on Mitsubishi Andromeda. Extremely high bootloop risk. |
+| ~~**Modifying `DaLauncher.apk` via smali**~~ | **Completed successfully as Phase 10 (2026-10-29)** following the discovery of the `sDisclamerFlg` gate. Single instruction patch, re-signed with AOSP testkey, deployed via OTA. |
 
-→ [`docs/MAPA.md` §16](docs/MAPA.md)
+→ See [`docs/MAPA.md §16`](docs/MAPA.md).
 
-## Ferramentas e processos reusáveis
+---
 
-Além dos achados específicos deste carro, o projeto produziu infraestrutura reusável:
+## Reusable Tools & Workflows
 
-- **`tooling/deodex/deodex-apk.sh`** — automatiza odex → `classes.dex` → APK pra qualquer APK Mitsubishi (toda a vendor-app é pre-dexed). Validado em 160 APKs.
-- **Fluxo REA + MCP** — integração do [REA](https://github.com/morluto/rea) como MCP server. `~/.local/share/rea/android/jadx-headless-mcp-0.7.1-all.jar` + env var `REA_JADX_MCP_JAR` + skill `reverse-engineer-anything`. Qualquer dump Android pode ser analisado.
-- **EvilValet OTA com testkey AOSP** — pacote OTA assinado com testkey AOSP pública, aceito pela recovery (fundamentos em [juniperspring.org](https://juniperspring.org/posts/honda-evil-valet/)). Nossa adaptação pra safra BR + inclusão de busybox no pacote funciona pra outras safras do mesmo recovery.
-- **Pacote OTA de deep-scan** — dumpa `/system`, `/data/system/packages.xml`, `/proc/*`, árvore de partições em uma passada no carro. Gera `scan.tar.gz` 897 KB → alimenta `docs/MAPA.md`.
-- **Hall of fame com fix** — cada bug tem receita no `MAPA` §17; aplicável a outros projetos de RE Mitsubishi.
+In addition to car-specific findings, this repository contains reusable tooling:
 
-→ Processo de deodex: [`tooling/deodex/README.md`](tooling/deodex/README.md) · Comando frequente REA: [`docs/MAPA.md` §20.8](docs/MAPA.md)
+- **`tooling/deodex/deodex-apk.sh`**: Automates `.odex` → `classes.dex` → `.apk` reconstitution for any Mitsubishi Andromeda APK. Validated on 160 APKs.
+- **REA + MCP Workflow**: Headless MCP integration of REA / JADX for deep binary querying.
+- **EvilValet OTA with AOSP testkey**: OTA update construction signed with public AOSP testkeys accepted by the recovery (rooted in [juniperspring.org](https://juniperspring.org/posts/honda-evil-valet/)).
+- **Deep-Scan OTA Package**: Dumps `/system`, `/data/system/packages.xml`, `/proc/*`, and partition layouts in a single key-on pass. Produces `scan.tar.gz` (897 KB).
 
-## Oportunidades identificadas (próximas fases)
-
-Resumo dos achados que apontam pra próximas melhorias concretas — detalhes e priorização em [`ROADMAP.md`](ROADMAP.md).
-
-- **`ICameraAPServiceReverseSignalListener`** (AIDL do Camera service) permite detectar entrada/saída da ré via callback direto, sem o logcat polling atual
-- **`com.mitsubishielectric.ada.appservice.powermanager.ACTION_RESUME_CAMERA`** é broadcast dedicado à retomada da câmera
-- **`com.mitsubishielectric.ada.app.dalauncher.action.DISCLAIMER_COMPLETE`** confirmado como sinal canônico de "aviso dispensado" (2026-10-20, logs do carro com o v0.5.4; novamente em 2026-10-29 pelo caminho Eco pós-Fase 10). 4 receivers vendor conhecidos
-- **`persist.sys.keyoff_reboot=1`** teoricamente força cold boot a cada keyoff — resolveria a complexidade LP0 toda (teste pendente)
-- **Vehicle info completa** — `IVehicleInfoManagerApService` tem 37 listeners cobrindo marcha, velocidade, voltagem IG, ângulo do volante, VIN, FOB key atual. Abre caminho pra features reais ligadas ao estado do carro.
-
-→ [`ROADMAP.md`](ROADMAP.md)
+→ See [`tooling/deodex/README.md`](tooling/deodex/README.md) and [`docs/MAPA.md §20.8`](docs/MAPA.md).

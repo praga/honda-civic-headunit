@@ -18,6 +18,7 @@ This x-ray is the platform's "schema": lists what **exists**, not what **each th
 | 6 | [`06-diag-apks.md`](06-diag-apks.md) | RE of the Diag APKs (DealerDiag et al.) and `DiagApService` | **91 DealerDiag screens, no PIN** |
 | 7 | [`07-services-re.md`](07-services-re.md) | RE of services: steering wheel, official OTA, vehicle, audio | **StrgSW, SystemUpdate, VehicleInfoManager, SystemInfoService** |
 | 8 | [`08-github-landscape-2026-10-27.md`](08-github-landscape-2026-10-27.md) | GitHub landscape: 33 repos, KingoSU found in our `su`, Mitsubishi TX codes mapped by Clusters | **KingoSU in `/system/xbin/su`**, Clusters, opendbc, CR-V China |
+| 9 | [`09-camera-re.md`](09-camera-re.md) | Reverse camera IPC, AIDL, broadcast & CAN signal | **164 AIDL transactions, reverse flow mapped** |
 
 ## High level — what the x-ray reveals
 

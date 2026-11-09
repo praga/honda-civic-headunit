@@ -1,3 +1,5 @@
+[🇺🇸 English](HOW-TO-USE.md) · 🇧🇷 **Português**
+
 # Como migrar o projeto pro Linux
 
 ## 📦 O que esta pasta `MIGRATION/` contém

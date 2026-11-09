@@ -4,206 +4,200 @@
 
 # Honda Civic G10 — Skip Disclaimer
 
-**Elimine automaticamente a tela de "Aviso" que aparece sempre que você liga seu Honda Civic**
+**Automatically dismiss the "Warning" disclaimer screen that appears every time you turn on your Honda Civic**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-conclu%C3%ADdo-brightgreen)](docs/fase10-deploy-2026-10-29/README.md)
+[![Status](https://img.shields.io/badge/status-complete-brightgreen)](docs/en/fase10-deploy-2026-10-29/README.md)
 [![Platform](https://img.shields.io/badge/platform-Android_4.2.2_%7C_Tegra_3-blue)]()
-[![Safra](https://img.shields.io/badge/safra_testada-1.F187.16_BR-orange)]()
-[![Fase 10](https://img.shields.io/badge/Fase_10-aviso_removido_2026--10--29-success)](docs/fase10-deploy-2026-10-29/README.md)
+[![Firmware](https://img.shields.io/badge/tested_firmware-1.F187.16_BR-orange)]()
+[![Phase 10](https://img.shields.io/badge/Phase_10-warning_removed_2026--10--29-success)](docs/en/fase10-deploy-2026-10-29/README.md)
 [![AutoOk](https://img.shields.io/badge/AutoOk-v0.5.4_safety_net-informational)]()
 [![CI](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml)
 
-🇧🇷 **Português** · [🇺🇸 English](README.en.md)
+🇺🇸 **English** · [🇧🇷 Português](README.pt-BR.md)
 
 </div>
 
 ---
 
-## 🎬 Antes e depois
+## 🎬 Before and after
 
 <div align="center">
 
-<img src="docs/images/antes-depois.gif" alt="Antes: aviso aparece. Depois: aviso nao aparece mais" width="640"/>
+<img src="docs/images/hero-en.svg" alt="Before: Warning screen. After: Main launcher. Auto-dismissed in ~3s." width="100%"/>
 
-**Toda vez que você liga o carro, a central mostrava o Aviso.** Antes era clicar manualmente. Hoje **o aviso nem aparece mais** — o fluxo pula direto para o launcher (Fase 10, 29/10/2026).
+**Every time you turn the car on, the head unit showed the Warning.** Before, you had to tap it manually. Today **the warning does not appear at all** — the boot flow jumps straight to the launcher (Phase 10, deployed 2026-10-29).
 
 </div>
 
 ---
 
-## 🎯 O problema
+## 🎯 The problem
 
 <div align="center">
-<img src="docs/images/foto-aviso-painel.jpg" alt="Tela de Aviso na central multimídia do Honda Civic G10" width="640"/>
+<img src="docs/images/screenshots-en/notice-en.jpg" alt="Notice screen on Honda Civic G10 head unit, English firmware" width="640"/>
+
+<sub>Real photo from the Brazilian 2017 Civic EXL with the head unit switched to English. The dialog layout, OK button position and the auto-dismiss behavior are the same in every supported locale — only the text changes.</sub>
 </div>
 
-Cada vez que você liga o carro, a central mostra:
+Every time you turn the car on, the head unit shows:
 
-> **"Aviso — O motorista é o responsável pela condução segura deste veículo..."**
+> **"Notice — The driver is responsible for the safe operation of this vehicle. Use this system only when traffic conditions permit. For further details see your owner's manual."**
 
-E você tem que clicar **OK**. Toda. Vez. Até o CarPlay subir. Toda ligada do carro, 365 dias por ano, por anos.
+And you have to tap **OK**. Every. Single. Time. Before CarPlay starts. Every ignition cycle, 365 days a year, for years.
 
-A Honda **nunca** liberou uma configuração pra desabilitar isso.
+Honda has **never** released a configuration to disable this.
 
-## ✨ A solução — em duas camadas
+## ✨ The solution — in two layers
 
-Tudo é entregue via **EvilValet** (descoberta por [juniperspring.org](https://juniperspring.org/posts/honda-evil-valet/)) — um pacote OTA "falso" assinado com a testkey AOSP pública, que o `daupdater` do carro aceita como se fosse update oficial.
+Everything is delivered via **EvilValet** (discovered by [juniperspring.org](https://juniperspring.org/posts/honda-evil-valet/)) — a "fake" OTA package signed with the public AOSP testkey, which the head unit's `daupdater` accepts as if it were an official update.
 
-### Camada 1 — AutoOk (safety net automático)
+### Layer 1 — AutoOk (automatic safety net)
 
-APK + `su` setuid instalados em `/system/`. O APK monitora o logcat, detecta a Activity do aviso aparecer e dispara um `input tap` simulado em (400, 350). Aviso aparecia por ~3 s e sumia sozinho. Rede de segurança: se o patch da Camada 2 falhar por qualquer motivo, essa rota continua tapando.
+APK + `su` setuid installed into `/system/`. The APK monitors logcat, detects the warning Activity, and fires a simulated `input tap` at (400, 350). Warning used to appear for ~3 s and vanish on its own. Kept as a fallback: if the Layer 2 patch ever fails, this still dismisses the warning.
 
-### Camada 2 — Fase 10 (patch smali no DaLauncher — a solução definitiva)
+### Layer 2 — Phase 10 (smali patch in DaLauncher — the definitive fix)
 
-Patch de **uma instrução no bytecode** do `DaLauncher.apk` (`OpeningDivideActivity.smali:671`): `if-nez v0, :cond_9` → `goto :cond_9`. Força o fluxo de boot a pular o `DisclaimerFragment` e cair direto no caminho que já carregava CarPlay, navegação e tudo mais. **Aviso simplesmente não existe mais no fluxo**, para sempre.
+A **one-instruction bytecode patch** in `DaLauncher.apk` (`OpeningDivideActivity.smali:671`): `if-nez v0, :cond_9` → `goto :cond_9`. Forces the boot flow to skip the `DisclaimerFragment` and go straight to the branch that already loaded CarPlay, navigation and everything else. **The warning simply no longer exists in the flow**, forever.
 
-Um segundo patch (Fase 10.1) reduz uma tela intermediária de ecoscore de ~6 s para ~1 s.
+A second patch (Phase 10.1) reduces an intermediate ecoscore screen from ~6 s to ~1 s.
 
-**Resultado observado no carro (29/10/2026):** aviso removido, CarPlay projeta, navegação funciona, câmera de ré funciona, zero crash. Detalhes em [`docs/fase10-deploy-2026-10-29/README.md`](docs/fase10-deploy-2026-10-29/README.md).
+**Observed in the car (2026-10-29):** warning removed, CarPlay projects, navigation works, backup camera works, zero crashes. Details in [`docs/en/fase10-deploy-2026-10-29/README.md`](docs/en/fase10-deploy-2026-10-29/README.md).
 
-**Rede de segurança preservada:** o AutoOk (Camada 1) permanece em `/system/app/` como fallback automático na primeira semana. Pode ser removido depois da janela estável via `tooling/ota-build/output-rollback/` sem afetar o patch.
+**Safety net preserved:** AutoOk (Layer 1) stays in `/system/app/` as an automatic fallback for the first week. Can be removed afterwards via `tooling/ota-build/output-rollback/` without affecting the patch.
 
----
-
-## 🏗️ Como funciona (visão de 60 segundos)
+### 📹 Proof: real deploy in the owner's car
 
 <div align="center">
-<img src="docs/images/arquitetura.svg" alt="Pipeline: PC → pacote OTA → pendrive → cold boot → recovery → /system" width="900"/>
+<img src="docs/images/antes-depois.gif" alt="Real footage of warning appearing and auto-dismissing on the Brazilian 2017 Civic EXL" width="560"/>
+
+<sub>Real footage from the Brazilian 2017 Civic EXL (firmware `1.F187.16`), recorded before Phase 10 was deployed. The warning in the video is in Portuguese because that's the owner's car. International variants show the same flow with the warning translated to your local language. After Phase 10 (2026-10-29) the warning does not appear at all.</sub>
 </div>
-
-**No PC** (uma vez, ~15 min):
-1. Compila o APK AutoOk (`gradlew assembleRelease`) **ou** rebuilda o `DaLauncher.apk` patcheado (`bash tooling/fase10/rebuild-dalauncher.sh`)
-2. Assina com testkey AOSP (`apksigner`)
-3. Monta pacote OTA assinado com testkey AOSP (`python3 build.py` para AutoOk; `python3 build-dalauncher-fase10.py` para Fase 10)
-4. Grava num pendrive FAT32 (`prepare-pendrive-install.sh`)
-
-**No carro** (uma vez por deploy, ~10 min):
-1. Pendrive na porta USB-A frontal
-2. Segura `AUDIO` por 5s → confirma "Quer reiniciar?"
-3. Central reinicia, recovery aplica o pacote
-4. APK em `/system/` — permanente
-
-**Em operação** (automático, pra sempre):
-- Com só a Camada 1 (AutoOk): a cada boot, APK dispensa o aviso em ~3 s
-- Com a Camada 2 (Fase 10): o aviso **nem chega a aparecer**
-- Zero manutenção. Zero interação.
 
 ---
 
-## 🚗 Compatibilidade
+## 🏗️ How it works (60 second view)
 
-### ✅ Confirmado funcionando
+<div align="center">
+<img src="docs/images/arquitetura.svg" alt="Pipeline: PC → OTA package → USB stick → cold boot → recovery → /system" width="900"/>
+</div>
 
-| Carro | DA Version | Mercado | Rom type | Status |
+**On the PC** (one time, ~15 min):
+1. Compile the AutoOk APK (`gradlew assembleRelease`) **or** rebuild the patched `DaLauncher.apk` (`bash tooling/fase10/rebuild-dalauncher.sh`)
+2. Sign with AOSP testkey (`apksigner`)
+3. Build OTA package signed with AOSP testkey (`python3 build.py` for AutoOk; `python3 build-dalauncher-fase10.py` for Phase 10)
+4. Write to a FAT32 USB stick (`prepare-pendrive-install.sh`)
+
+**In the car** (one time per deploy, ~10 min):
+1. USB stick into the front USB-A port
+2. Hold `AUDIO` button for 5s → confirm "Reboot?"
+3. Head unit reboots, recovery applies the package
+4. APK lands in `/system/` — permanent
+
+**In operation** (automatic, forever):
+- With Layer 1 only (AutoOk): on every boot, the APK dismisses the warning in ~3 s
+- With Layer 2 (Phase 10): the warning **never appears at all**
+- Zero maintenance. Zero interaction.
+
+---
+
+## 🚗 Compatibility
+
+### ✅ Confirmed working
+
+| Car | DA Version | Market | Rom type | Status |
 |---|---|---|---|---|
-| Honda Civic 2017 EXL | `1.F187.16` | 🇧🇷 Brasil | `0040` | ✅ AutoOk deployado 2026-10-16 · Fase 10 deployada 2026-10-29 |
+| Honda Civic 2017 EXL | `1.F187.16` | 🇧🇷 Brazil | `0040` | ✅ AutoOk deployed 2026-10-16 · Phase 10 deployed 2026-10-29 |
 
-### 🤷 Potencialmente compatível (não testado)
+### 🤷 Likely compatible (not tested)
 
-Mesmo framework Mitsubishi Andromeda — provável que funcione com adaptação de 2 valores:
-- **Civic G10 2016-2021** (US, EU, AU, outras BR)
+Same Mitsubishi Andromeda framework — likely works with adaptation of 2 values:
+- **Civic G10 2016-2021** (US, EU, AU, other BR variants)
 - **Civic Avancier, Civic URV**
-- **CR-V 2016-2021** (algumas safras)
-- **Accord 2016+** com Display Audio
+- **CR-V 2016-2021** (some firmware)
+- **Accord 2016+** with Display Audio
 
-Se você tem outra safra, [ajude a comunidade](#-contribuindo) — bastam 2 informações pra confirmar: o `custom_rom.type` e a resolução da tela.
+If you have a different firmware, [help the community](#-contributing) — just 2 pieces of info confirm it works: your `custom_rom.type` and screen resolution.
 
-👉 Como adaptar pra outra safra: [`docs/pt-BR/03-descobrindo-sua-safra.md`](docs/pt-BR/03-descobrindo-sua-safra.md)
+👉 How to adapt for other firmware: [`docs/en/03-finding-your-firmware.md`](docs/en/03-finding-your-firmware.md)
 
 ---
 
 ## 🚀 Quick Start
 
-**Dono de Civic 2017 EXL BR?** Deploy em ~20 minutos:
+**Own a 2017 Civic EXL BR?** Deploy in ~20 minutes:
 
-👉 **[QUICKSTART.md](QUICKSTART.md)** — passo a passo completo
+👉 **[QUICKSTART.md](QUICKSTART.md)** (currently Portuguese — commands are universal)
 
-Resumo:
+Summary:
 ```bash
 git clone https://github.com/khalleb/honda-civic-headunit.git
 cd honda-civic-headunit
-./MIGRATION/setup.sh                     # clona dependências
-cd our-apk && ./gradlew assembleRelease  # compila APK
-# ... assina + copia pro overlay ...
-python3 tooling/ota-build/build.py       # pacote OTA
+./MIGRATION/setup.sh                     # clone dependencies
+cd our-apk && ./gradlew assembleRelease  # build APK
+# ... sign + copy to overlay ...
+python3 tooling/ota-build/build.py       # OTA package
 sudo ./tooling/scripts/prepare-pendrive-install.sh /dev/sda
-# No carro: AUDIO 5s + confirmar reiniciar
+# In the car: AUDIO 5s + confirm reboot
 ```
 
-**Outra safra?** Primeiro adapte seguindo [`docs/pt-BR/03-descobrindo-sua-safra.md`](docs/pt-BR/03-descobrindo-sua-safra.md).
+**Different firmware?** First adapt following [`docs/en/03-finding-your-firmware.md`](docs/en/03-finding-your-firmware.md).
 
 ---
 
-## ⚠️ Avisos importantes
+## ⚠️ Important warnings
 
-- 🧱 **Pode causar brick permanente** da central se feito errado. Troca custa R$ 1.000-2.000.
-- 📷 **A tela também é a câmera de ré** — brick = sem ré até trocar.
-- 🔄 **OTAs oficiais da Honda podem reverter** a modificação. Precisa redeployar.
-- ✅ **CarPlay, Bluetooth, áudio, navegação continuam funcionando** — nossa modificação é cirúrgica.
-- 🔒 **Zero backdoor pra Honda detectar.** APK fica como qualquer app do /system/.
+- 🧱 **Can cause permanent brick** of the head unit if done wrong. Replacement costs R$ 1,000-2,000 (~USD 200-400).
+- 📷 **The screen is also the backup camera** — brick = no backup camera until replacement.
+- 🔄 **Official Honda OTAs may revert** the modification. You'll need to redeploy.
+- ✅ **CarPlay, Bluetooth, audio, navigation keep working** — our modification is surgical.
+- 🔒 **No backdoor for Honda to detect.** APK sits in /system/app like any system app.
 
-**Leia o [DISCLAIMER.md](DISCLAIMER.md) completo antes de executar qualquer coisa.**
-
----
-
-## 🔬 O que descobrimos no caminho
-
-Além do APK que resolve o aviso, mapeamos muito da plataforma Mitsubishi Andromeda. Útil pra quem quer adaptar pra outra safra, construir outros apps no mesmo HU, ou entender o fluxo real de power da central (LP0, câmera de ré, HMI service start).
-
-Resumo com links pros docs densos: [`DISCOVERIES.md`](DISCOVERIES.md).
-
-Alguns highlights:
-
-- **16 broadcasts do PowerManager** mapeados, com causas conhecidas (`ColdBoot`, `ExitLP0`, `AccOnRestart`). 33 APKs do shipping escutam `ACTION_HMI_SERVICE_START` — é o contrato oficial de recovery pós-LP0, não workaround.
-- **364 interfaces AIDL** em 63 domínios. `appservice.vehicleinfomanager` sozinho tem 37 listeners cobrindo marcha, velocidade, VIN, FOB key atual, ângulo do volante.
-- **445 broadcasts vendor** em 48 prefixos (navi, HFT, câmera, launcher, PowerManager, diag).
-- **27 ContentProvider authorities** (9 vendor, incluindo o fluxo real da whitelist Mitsubishi — que, surpresa, é UX-only e não afeta LP0).
-- **Hall of fame de 14 bugs** resolvidos com causa raiz documentada — útil pra outros projetos de RE Mitsubishi.
-
-## 🧰 Ferramentas reusáveis
-
-Infraestrutura que vive junto do projeto e serve pra outros HUs com mesmo stack:
-
-- [`tooling/deodex/deodex-apk.sh`](tooling/deodex/deodex-apk.sh) — automatiza odex → APK pra qualquer APK Mitsubishi (toda a vendor-app é pre-dexed). Validado em 160 APKs do dump.
-- Pacote OTA EvilValet com `busybox` ARM embarcado — nossa safra precisa porque o recovery BR não tem `/sbin/sh`. Serve pra outras safras do mesmo recovery.
-- Pacote OTA de deep-scan — dumpa `/system`, `/data/system/packages.xml`, árvore de partições + `/proc/*` numa passada só. Alimenta o atlas da central.
-- Fluxo [REA](https://github.com/morluto/rea) + MCP já configurado em [`tooling/deodex/`](tooling/deodex/) — análise estática de qualquer APK Android pelo agente.
-
-## 🗺️ Para onde isso vai
-
-Objetivo original cumprido em 2026-10-29. O que fica abaixo é exploratório; detalhes em [`ROADMAP.md`](ROADMAP.md).
-
-- **Fase 9 — câmera de ré via API oficial.** Trocar o logcat polling atual por bind no `ICameraAPServiceReverseSignalListener`, com `ACTION_RESUME_CAMERA` como fallback. Hoje já temos TX codes do `IVehicleInfoManagerApService` mapeados (via `alexpotv/Clusters`), inclusive o sinal `MICU_BCM`/`MICU_ICU` que carrega a luz de ré.
-- Dumpar `com.honda.displayaudio.whitelist.apk` real pra confirmar formato do XML (hoje é inferido do parser).
-- Testar `persist.sys.keyoff_reboot=1` — teoricamente força cold boot a cada keyoff e elimina a complexidade LP0.
-- Trocar o `/system/xbin/su` por SuperSU oficial — o atual é KingoSU (achado da varredura do GitHub de 2026-10-27).
+**Read the full [DISCLAIMER.md](DISCLAIMER.md) before executing anything.**
 
 ---
 
-## 📚 Documentação
+## 🔬 What we discovered along the way
 
-### 🇧🇷 Em português
+Beyond the APK that dismisses the warning, we mapped a lot of the Mitsubishi Andromeda platform. Useful if you want to adapt the project for another firmware, build other apps on the same HU, or understand the real power flow of the unit (LP0, backup camera, HMI service start).
 
-| Doc | Descrição |
-|---|---|
-| [`QUICKSTART.md`](QUICKSTART.md) | Deploy em 20 min |
-| [`docs/pt-BR/00-visao-geral.md`](docs/pt-BR/00-visao-geral.md) | O que foi feito e por quê |
-| [`docs/pt-BR/01-arquitetura-ataque.md`](docs/pt-BR/01-arquitetura-ataque.md) | Como EvilValet funciona |
-| [`docs/pt-BR/02-pre-requisitos.md`](docs/pt-BR/02-pre-requisitos.md) | Hardware, software, keystore |
-| [`docs/pt-BR/03-descobrindo-sua-safra.md`](docs/pt-BR/03-descobrindo-sua-safra.md) | Adaptar pra outras safras |
-| [`docs/pt-BR/04-build-do-pacote.md`](docs/pt-BR/04-build-do-pacote.md) | Compilar o pacote OTA |
-| [`docs/pt-BR/05-deploy-no-carro.md`](docs/pt-BR/05-deploy-no-carro.md) | Protocolo no carro |
-| [`docs/pt-BR/06-troubleshooting.md`](docs/pt-BR/06-troubleshooting.md) | Debug quando algo não funciona |
-| [`docs/pt-BR/07-rollback.md`](docs/pt-BR/07-rollback.md) | Reverter tudo |
-| [`docs/pt-BR/08-backups-e-rollback.md`](docs/pt-BR/08-backups-e-rollback.md) | Catálogo de backups |
-| [`docs/pt-BR/09-fase10-remover-aviso.md`](docs/pt-BR/09-fase10-remover-aviso.md) | 🎯 Fase 10 — remover o aviso de vez via patch no DaLauncher |
+Summary with links to the dense docs: [`DISCOVERIES.md`](DISCOVERIES.md).
+
+Some highlights:
+
+- **16 PowerManager broadcasts** mapped, with known causes (`ColdBoot`, `ExitLP0`, `AccOnRestart`). 33 shipping APKs listen for `ACTION_HMI_SERVICE_START` — this is the official recovery contract after LP0, not a workaround.
+- **364 AIDL interfaces** in 63 domains. `appservice.vehicleinfomanager` alone has 37 listeners covering gear, speed, VIN, current FOB key, steering angle.
+- **445 vendor broadcasts** across 48 prefixes (navi, HFT, camera, launcher, PowerManager, diag).
+- **27 ContentProvider authorities** (9 vendor, including the real flow of the Mitsubishi whitelist — which, surprise, is UX-only and does not affect LP0).
+- **Hall of fame of 14 bugs** fixed with documented root causes — useful for other Mitsubishi RE projects.
+
+## 🧰 Reusable tooling
+
+Infrastructure that lives alongside the project and works for other HUs with the same stack:
+
+- [`tooling/deodex/deodex-apk.sh`](tooling/deodex/deodex-apk.sh) — automates odex → APK for any Mitsubishi APK (all vendor-app is pre-dexed). Validated on 160 APKs from the dump.
+- EvilValet OTA package with embedded `busybox` ARM — ours needs it because the BR recovery lacks `/sbin/sh`. Works for other firmwares on the same recovery.
+- Deep-scan OTA package — dumps `/system`, `/data/system/packages.xml`, partition tree + `/proc/*` in a single pass. Feeds the unit atlas.
+- [REA](https://github.com/morluto/rea) + MCP flow already configured in [`tooling/deodex/`](tooling/deodex/) — static analysis of any Android APK through the agent.
+
+## 🗺️ Where this is heading
+
+Original goal achieved on 2026-10-29. Everything below is exploratory; details in [`ROADMAP.md`](ROADMAP.md).
+
+- **Phase 9 — backup camera via official API.** Replace the current logcat polling with a bind on `ICameraAPServiceReverseSignalListener`, with `ACTION_RESUME_CAMERA` as fallback. TX codes for `IVehicleInfoManagerApService` are already mapped (via `alexpotv/Clusters`), including the `MICU_BCM`/`MICU_ICU` signal that carries the reverse light.
+- Dump the real `com.honda.displayaudio.whitelist.apk` to confirm the XML format (today it's inferred from the parser).
+- Try `persist.sys.keyoff_reboot=1` — theoretically forces a cold boot on every keyoff and eliminates the whole LP0 complexity.
+- Swap `/system/xbin/su` for the official SuperSU — the current one turned out to be KingoSU (finding from the GitHub landscape scan on 2026-10-27).
+
+---
+
+## 📚 Documentation
 
 ### 🇺🇸 In English
 
 | Doc | Description |
 |---|---|
-| [`README.en.md`](README.en.md) | README |
+| [`QUICKSTART.md`](QUICKSTART.md) | Deploy in 20 min (Portuguese — commands universal) |
 | [`docs/en/00-overview.md`](docs/en/00-overview.md) | What the project does and why |
 | [`docs/en/01-attack-architecture.md`](docs/en/01-attack-architecture.md) | How the EvilValet attack works |
 | [`docs/en/02-prerequisites.md`](docs/en/02-prerequisites.md) | Hardware, software, keystore |
@@ -215,57 +209,61 @@ Objetivo original cumprido em 2026-10-29. O que fica abaixo é exploratório; de
 | [`docs/en/08-backups.md`](docs/en/08-backups.md) | Full backup catalog |
 | [`docs/en/09-fase10-remove-warning.md`](docs/en/09-fase10-remove-warning.md) | 🎯 Phase 10 — remove the warning for good via DaLauncher patch |
 
+### 🇧🇷 In Portuguese (original)
+
+Same docs under [`docs/pt-BR/`](docs/pt-BR/). The deep technical dive and the deploy narrative in [`docs/fase7-deploy-2026-10-16/`](docs/fase7-deploy-2026-10-16/) are still Portuguese-only — PRs welcome.
+
 ### 🔬 Deep technical dive
 
-- [`DISCOVERIES.md`](DISCOVERIES.md) — Índice navegável dos achados técnicos
-- [`ROADMAP.md`](ROADMAP.md) — Próximos passos, descartados com motivo
-- [`docs/MAPA.md`](docs/MAPA.md) — **Atlas navegável da central** (partições, APKs, services, pipeline)
-- [`docs/fase7-deploy-2026-10-16/`](docs/fase7-deploy-2026-10-16/) — Camada 1 (AutoOk): jornada, descobertas, receitas, dumps, arquitetura
-- [`docs/fase10-deploy-2026-10-29/`](docs/fase10-deploy-2026-10-29/) — **Camada 2 (patch smali)**: timeline do deploy, Fase 10.1, logs do carro
-- [`docs/raio-x/`](docs/raio-x/) — Scan estático da plataforma: 364 AIDLs, 445 broadcasts, 27 providers, 48 sysprops, trust map de 110 APKs + RE Camada 2 das services (volante, OTA oficial, veículo, áudio) + varredura de 33 projetos adjacentes no GitHub
-- [`docs/whitelist-mitsubishi-2026-10-19.md`](docs/whitelist-mitsubishi-2026-10-19.md) — Fluxo completo da whitelist Mitsubishi + mapeamento do recovery pós-LP0
+- [`DISCOVERIES.md`](DISCOVERIES.md) — Navigable index of technical findings (Portuguese, link labels mostly English)
+- [`ROADMAP.md`](ROADMAP.md) — Next steps, discarded routes with reason
+- [`docs/MAPA.md`](docs/MAPA.md) — **Navigable atlas of the HU** (partitions, APKs, services, pipeline) — mostly Portuguese labels but structure is clear
+- [`docs/fase7-deploy-2026-10-16/`](docs/fase7-deploy-2026-10-16/) — Layer 1 (AutoOk): journey, discoveries, recipes, dumps, APK architecture, maintenance (Portuguese)
+- [`docs/en/fase10-deploy-2026-10-29/`](docs/en/fase10-deploy-2026-10-29/) — **Layer 2 (smali patch)**: deploy timeline, Phase 10.1, car logs
+- [`docs/raio-x/`](docs/raio-x/) — Static platform scan: 364 AIDLs, 445 broadcasts, 27 providers, 48 sysprops, trust map of 110 APKs + RE Layer 2 of the services (steering wheel, official OTA, vehicle, audio) + landscape scan of 33 adjacent GitHub projects
+- [`docs/whitelist-mitsubishi-2026-10-19.md`](docs/whitelist-mitsubishi-2026-10-19.md) — Full Mitsubishi whitelist flow + mapping of recovery after LP0
 
 ---
 
-## 🙏 Créditos
+## 🙏 Credits
 
-Este projeto não existiria sem o trabalho de:
+This project wouldn't exist without:
 
-- **[librick / Eric McDonald](https://juniperspring.org/)** — descoberta e documentação técnica da vulnerabilidade **EvilValet**, `ota-builder`, `apk-rebuilder` ([ic1101](https://github.com/librick/ic1101))
-- **[@codeage](https://github.com/codeage/root-honda)** — ferramenta de root com `su` ARM estático, SuperSU, análise da whitelist Mitsubishi
-- **[@jersacct](https://github.com/jersacct/2016PilotOneClick)** — projeto-mãe para rooting de Honda via DirtyCOW
+- **[librick / Eric McDonald](https://juniperspring.org/)** — discovery and technical documentation of the **EvilValet** vulnerability, `ota-builder`, `apk-rebuilder` ([ic1101](https://github.com/librick/ic1101))
+- **[@codeage](https://github.com/codeage/root-honda)** — root tool with static ARM `su`, SuperSU, Mitsubishi whitelist analysis
+- **[@jersacct](https://github.com/jersacct/2016PilotOneClick)** — mother project for Honda rooting via DirtyCOW
 
-**Nossa contribuição** é a adaptação para a safra brasileira `1.F187.16` (rom type `0040`, combo `AUDIO 5s` para cold boot, descoberta de que o recovery BR não tem `/sbin/sh` e precisa de busybox embarcado, APK persistente que re-arma após cada tap, pipeline de deep-scan pra sincronizar o atlas da central) **e a Fase 10** (descoberta do gate `OpeningDivideActivity.sDisclamerFlg` como static boolean em memória, dois patches smali de uma instrução cada, pipeline de rebuild auto-contido com prova de bytecode `orig → patch`).
+**Our contribution** is the adaptation to the Brazilian firmware `1.F187.16` (rom type `0040`, `AUDIO 5s` combo for cold boot, discovery that BR recovery doesn't ship `/sbin/sh` and needs embedded busybox, persistent APK that re-arms after each tap, deep-scan pipeline to sync the HU atlas) **and Phase 10** (discovery of the `OpeningDivideActivity.sDisclamerFlg` gate as a static boolean in memory, two one-instruction smali patches, self-contained rebuild pipeline with `orig → patch` bytecode proof).
 
-Detalhes técnicos: [`docs/fase7-deploy-2026-10-16/02-descobertas-tecnicas.md § 0`](docs/fase7-deploy-2026-10-16/02-descobertas-tecnicas.md#0-contribuições-novas-deste-projeto).
-
----
-
-## 🤝 Contribuindo
-
-Encorajamos:
-
-1. **Tem outra safra Honda G10?** Abra uma issue com o template [`nova-safra.md`](.github/ISSUE_TEMPLATE/nova-safra.md). Informe VIN prefix, DA version, `custom_rom.type`, resolução. Juntamos matriz de compatibilidade.
-2. **Encontrou bug ou melhoria?** Issues + PRs bem-vindos.
-3. **Quer traduzir pra outro idioma?** Fork + PR com nova pasta `docs/<lang>/`. Prioridade: completar tradução EN dos docs 01, 02, 04, 05, 06.
-4. **Testou em outro carro e funcionou?** Reporta via issue — vira linha na tabela de compatibilidade.
-
-Veja [`CONTRIBUTING.md`](CONTRIBUTING.md) pra detalhes.
+Technical details: [`docs/fase7-deploy-2026-10-16/02-descobertas-tecnicas.md § 0`](docs/fase7-deploy-2026-10-16/02-descobertas-tecnicas.md#0-contribuições-novas-deste-projeto) (Portuguese).
 
 ---
 
-## 📄 Licença
+## 🤝 Contributing
 
-Código: [MIT](LICENSE). Documentação: CC BY 4.0.
+We welcome:
 
-Software proprietário Honda/Mitsubishi referenciado é propriedade de seus respectivos donos. **Este repo NÃO distribui firmware proprietário** — você precisa dumpar do seu próprio HU (ver [`docs/pt-BR/03-descobrindo-sua-safra.md`](docs/pt-BR/03-descobrindo-sua-safra.md)).
+1. **Have another Honda G10 firmware?** Open an issue using the [`nova-safra.md`](.github/ISSUE_TEMPLATE/nova-safra.md) template. Include VIN prefix, DA version, `custom_rom.type`, screen resolution. We'll build a compatibility matrix.
+2. **Found a bug or improvement?** Issues + PRs welcome.
+3. **Want to translate to another language?** Fork + PR with new `docs/<lang>/` folder. **Priority: complete the English translation of docs 01, 02, 04, 05, 06.**
+4. **Tested on another car and it worked?** Report via issue — becomes a row in the compatibility table.
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for details.
+
+---
+
+## 📄 License
+
+Code: [MIT](LICENSE). Documentation: CC BY 4.0.
+
+Honda/Mitsubishi proprietary software referenced is owned by respective holders. **This repo does NOT distribute proprietary firmware** — you must dump from your own HU (see [`docs/en/03-finding-your-firmware.md`](docs/en/03-finding-your-firmware.md)).
 
 ---
 
 <div align="center">
 
-**Feito pela comunidade Civic G10, pra comunidade Civic G10.**
+**Made by the Honda Civic G10 community, for the Honda Civic G10 community.**
 
-🇧🇷 **Português** · [🇺🇸 English](README.en.md)
+🇺🇸 **English** · [🇧🇷 Português](README.pt-BR.md)
 
 </div>

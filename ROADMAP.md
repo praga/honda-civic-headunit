@@ -1,139 +1,109 @@
 # Roadmap
 
-> O que já funciona, o que está em discussão para próximas fases, e o que foi descartado com motivo. Para o que **já descobrimos** (plataforma, protocolos, formato de dados), ver [`DISCOVERIES.md`](DISCOVERIES.md).
+> What is working, what is currently under discussion for future phases, and what has been discarded (with reasoning). For what has **already been discovered** (platform, protocols, data formats), see [`DISCOVERIES.md`](DISCOVERIES.md).
+>
+> *Language:* 🇺🇸 **English** · [🇧🇷 Português](ROADMAP.pt-BR.md)
 
-## Estado atual (2026-10-29)
+---
 
-- 🎯 **Fase 10 concluída (2026-10-29)** — aviso de abertura removido do fluxo de boot via patch smali no `DaLauncher.apk` (1 instrução). Tela intermediária Eco reduzida a ~1 s via segundo patch (Fase 10.1, mesma data). CarPlay projeta, navegação funciona, zero crash. Detalhes em [`docs/fase10-deploy-2026-10-29/README.md`](docs/fase10-deploy-2026-10-29/README.md). Pacote de rollback do DaLauncher validado no mesmo deploy.
-- APK **AutoOk v0.5.4** mantido em `/system/app/` como safety net (recomendação: manter 1 semana estável pós-Fase 10.1 antes de remover). Suprime o aviso tanto em cold boot (AUDIO 5s) quanto em LP0 resume. Zero taps falsos, zero conflito com ligação CarPlay via BT.
-- v0.5.4 fechou 4 iterações num mesmo dia (v0.5.0 → v0.5.4) resolvendo: bug do mudo em CarPlay (AlarmManager + needle frouxo do v0.4.0); regressão do EPERM (fix 17.9); duas Activities disparadas em LP0 resume (`PRECEDING_STARTUP` da tela de logo vs `NORMAL_STARTUP` do aviso real); formato errado do `-v brief`; bug do Android 4.2.2 que não combina `-b A -b B`.
-- `su` setuid permanente em `/system/xbin/` — identificado como KingoSU (não SuperSU), broadcast no-op; troca pelo Chainfire SR1 pendente ([`docs/raio-x/08-github-landscape-2026-10-27.md §4`](docs/raio-x/08-github-landscape-2026-10-27.md))
-- Deploy via pacote OTA EvilValet validado, com fix do loop infinito no `build.py` (renomeia `SwUpdate2.txt → .done`)
-- Pacotes de rollback (AutoOk + DaLauncher) construídos e, no caso do DaLauncher, validados no carro em 2026-10-29
+## Current Status (2026-10-29)
 
-**O objetivo original do projeto está cumprido.** Nada do roadmap abaixo compromete a estabilidade do deploy atual. Tudo listado é opcional / exploratório.
+- 🎯 **Phase 10 Completed (2026-10-29)** — The boot disclaimer warning has been eliminated from the boot flow via a 1-instruction smali patch in `DaLauncher.apk`. The intermediate Eco screen was reduced to ~1 s via a second patch (Phase 10.1, same day). CarPlay projects immediately, navigation functions normally, 0 crashes. Details in [`docs/en/fase10-deploy-2026-10-29/README.md`](docs/en/fase10-deploy-2026-10-29/README.md). DaLauncher rollback package verified during the same deployment.
+- **AutoOk v0.5.4 APK** retained in `/system/app/` as a safety net. Suppresses disclaimer on cold boot (AUDIO 5s) and LP0 resume. Zero false taps, zero interference with Bluetooth CarPlay calls.
+- v0.5.4 completed 4 rapid iterations resolving: CarPlay mute bug (AlarmManager + loose needle from v0.4.0); EPERM regression; two Activities triggered during LP0 resume (`PRECEDING_STARTUP` logo screen vs `NORMAL_STARTUP` actual disclaimer); malformed `-v brief` flag; Android 4.2.2 bug failing to combine `-b A -b B`.
+- Permanent setuid `su` installed in `/system/xbin/` — identified as KingoSU (no-op broadcast); candidate replacement with Chainfire SR1 documented in [`docs/en/raio-x/08-github-landscape-2026-10-27.md §4`](docs/en/raio-x/08-github-landscape-2026-10-27.md).
+- EvilValet OTA deployment verified, including the infinite loop fix in `build.py` (renaming `SwUpdate2.txt → .done`).
+- Rollback packages (AutoOk + DaLauncher) built and fully verified in-car on 2026-10-29.
 
-## Em curto prazo (candidatos a próxima fase)
+**The original project goal is fully achieved.** None of the exploratory roadmap items below compromise the stability of the active deployment. Everything listed is optional/exploratory.
 
-Em ordem de valor x custo. Nenhum está em execução — todos aguardam decisão de abrir fase nova.
+---
 
-### Fase 9 — Câmera de ré via API oficial
+## Short-Term (Candidates for Next Phases)
 
-**Hoje:** o AutoOk detecta entrada/saída da ré via logcat polling (processo `logcat` como child de `su` que lê linhas). Funciona mas é frágil (o próprio bug corrigido no v0.4.0 era o logcat child morrer em LP0).
+Prioritized by value vs. cost:
 
-**Caminho oficial descoberto:** o Camera service da plataforma expõe `ICameraAPServiceReverseSignalListener` via AIDL binder, e o PowerManager emite `ACTION_RESUME_CAMERA` + `ACTION_RESUME_COMPLETED_CAMERA` como broadcasts dedicados. Também existe `com.mitsubishielectric.android.action.camera.EXIT_REAR_WIDE_CAMERA` para saída.
+### Phase 9 — Rear Camera via Official Platform API
 
-**O que precisa:** confirmar permissão exigida (provavelmente `VEHICLE_RW`), bind no `ICameraAPService`, registrar listener, remover polling do AutoOk. Risco baixo porque o fluxo atual continua funcionando como fallback.
+- **Current state:** AutoOk detects reverse gear engagement via logcat polling (`logcat` child process spawned via `su`). Functional, but logcat child processes can terminate on LP0 sleep.
+- **Official API pathway:** The platform Camera service exposes `ICameraAPServiceReverseSignalListener` via AIDL binder IPC, and PowerManager emits `ACTION_RESUME_CAMERA` + `ACTION_RESUME_COMPLETED_CAMERA` dedicated broadcasts. In addition, `com.mitsubishielectric.android.action.camera.EXIT_REAR_WIDE_CAMERA` signals reverse exit.
+- **Requirements:** Confirm required permissions (`VEHICLE_RW`), bind to `ICameraAPService`, register reverse signal listener, and remove logcat polling. Low risk as existing flow serves as fallback.
+- See [`docs/en/raio-x/01-apis-aidl.md`](docs/en/raio-x/01-apis-aidl.md) and [`docs/en/raio-x/02-broadcasts.md`](docs/en/raio-x/02-broadcasts.md).
 
-→ [`docs/raio-x/01-apis-aidl.md § appservice.camera`](docs/raio-x/01-apis-aidl.md) · [`docs/raio-x/02-broadcasts.md`](docs/raio-x/02-broadcasts.md)
+### Validating `DISCLAIMER_COMPLETE` as Canonical "Warning Dismissed" Signal
 
-### Validar `DISCLAIMER_COMPLETE` como sinal canônico de "aviso dispensado"
+- The action `com.mitsubishielectric.ada.app.dalauncher.action.DISCLAIMER_COMPLETE` is broadcast by the launcher when `DisclaimerFragment` finishes.
+- Emitted equivalently on human tap and automated tap.
+- Allows internal logging to verify tap success without screen rescans, and allows other background tools to react without polling.
+- See [`docs/en/raio-x/02-broadcasts.md`](docs/en/raio-x/02-broadcasts.md).
 
-A action `com.mitsubishielectric.ada.app.dalauncher.action.DISCLAIMER_COMPLETE` é emitida pelo launcher quando o `DisclaimerFragment` termina. Se o launcher emite o broadcast igualzinho quando é tap humano **e** tap programático nosso, abre caminho pra:
+### Dumping the True `com.honda.displayaudio.whitelist.apk`
 
-- Logs internos do AutoOk saberem que o tap deu certo sem precisar re-ver a tela
-- Outros apps nossos reagirem ao evento sem polling
+- The carrier APK for the whitelist XML resides at `/system/vendor/etc/honda/com.honda.displayaudio.whitelist.apk` (14 KB according to textual scan), but binary bytes were omitted in the initial raw dump.
+- Useful to verify the exact on-disk schema and explore Route B (custom carrier entry) if user-friendly names in AppManager are ever desired.
+- See [`docs/en/whitelist-mitsubishi-2026-10-19.md §2.3`](docs/en/whitelist-mitsubishi-2026-10-19.md).
 
-**O que precisa:** confirmar via logcat no veículo que o broadcast dispara em ambos os casos. Zero código, 1 teste no carro.
+### Experimenting with `persist.sys.keyoff_reboot=1`
 
-→ [`docs/raio-x/02-broadcasts.md § com.mitsubishielectric.ada.app.dalauncher.*`](docs/raio-x/02-broadcasts.md)
+- This system property dictates whether the unit triggers a **cold boot** vs. **suspend/resume (LP0)** on key-off.
+- Default is suspend (which is why `AUDIO 5s` is required to force cold boot). Setting to `1` would theoretically make every ignition event a clean cold boot.
+- Eliminates LP0 state complexity, but boot time increases slightly (3–5s vs instantaneous).
+- See [`docs/en/raio-x/04-system-properties.md`](docs/en/raio-x/04-system-properties.md).
 
-### Dumpar `com.honda.displayaudio.whitelist.apk` real
+---
 
-O APK portador do XML da whitelist deveria estar em `/system/vendor/etc/honda/com.honda.displayaudio.whitelist.apk` (14 KB conforme deep-scan textual), mas não foi trazido como bytes no dump raw atual. Precisa dumpar pra:
+## Medium-Term (Promising Targets)
 
-- Confirmar formato real do XML (hoje é inferido do parser)
-- Testar Rota B da whitelist (substituir o APK portador por versão nossa com entry própria do AutoOk) se um dia quisermos nome amigável no AppManager
+### Diagnostic APKs — Hidden Menus & Service PINs
 
-**O que precisa:** incluir `/system/vendor/etc/honda/*` no próximo deep-scan OTA. Baixo custo.
+- 4 Diagnostic APKs (`DealerDiag`, `DeveloperDiag`, `PreShipmentDiag`, `LetDiag`) and `DiagApService.apk`.
+- Classified 91 DealerDiag screens (all PIN-free).
+- Potential for unlocking hidden developer screens and engineering diagnostics.
+- See [`docs/en/raio-x/06-diag-apks.md`](docs/en/raio-x/06-diag-apks.md).
 
-→ [`docs/whitelist-mitsubishi-2026-10-19.md § 2.3`](docs/whitelist-mitsubishi-2026-10-19.md)
+### Steering Wheel Controls API
 
-### ~~Fase 10 — Remover o aviso de vez (patch smali no DaLauncher)~~ ✅ **CONCLUÍDA 2026-10-29**
+- `IStrgSwApService` + 8 listeners handle steering wheel key events (`IStrgSwRotaryKeyEventApServiceListener`, `IStrgSwMotionMenuApServiceListener`, etc.).
+- Exposes raw hardware keypress events for mapping custom shortcut actions.
+- See [`docs/en/raio-x/01-apis-aidl.md`](docs/en/raio-x/01-apis-aidl.md).
 
-Rota B escolhida (resign AOSP). Patches versionados em `tooling/fase10/*.patch`. Deploy §2.1 + §2.2 passaram todos os gates no carro, com md5 pós-deploy = `fc8e87f6…` confirmando o APK patcheado no lugar. Observação do deploy: a tela `EcoFragment` (caminho morto antes do patch, §17.19 do MAPA) acordou pela primeira vez e aparece por ~6 s. **Fase 10.1** preparada no mesmo dia reduz essa tela para ~1 s via segundo patch smali (`EcoFragment.smali:3094`, timer 5000 ms → 500 ms), mantendo as 4 chamadas pós-aviso (`DISCLAIMER_COMPLETE`, `setDisplayPermission`, `disclaimerDisappeared`, `setDisclaimerPassed`).
+### Comprehensive Vehicle Telemetry
 
-Pacotes finais:
-- Install (v1 aplicada): `tooling/ota-build/output-dalauncher-fase10/20261027T020208Z/` SHA `4c31cb4d…`
-- Install (Fase 10.1 pronta): `tooling/ota-build/output-dalauncher-fase10/20261029T134614Z/` SHA `f571af75…` md5 do APK `655c01a3…`
-- Rollback: `tooling/ota-build/output-dalauncher-restore/20261027T020209Z/` SHA `6445ec80…`
+- `IVehicleInfoManagerApService` exposes 37 listeners covering current gear, speed, IG voltage, steering wheel angle, VIN, active FOB key ID, and reverse parking sensors.
+- Provides deep vehicle telemetry for custom car status dashboards.
+- See [`docs/en/raio-x/01-apis-aidl.md`](docs/en/raio-x/01-apis-aidl.md).
 
-Docs: [`docs/fase10-deploy-2026-10-29/README.md`](docs/fase10-deploy-2026-10-29/README.md), [`docs/MAPA.md`](docs/MAPA.md) §16.4, §17.19.
+### Audio Pipeline (Audio Ducking Bypass)
 
-### Experimentar `persist.sys.keyoff_reboot=1`
+- `AV.apk` runs as `android.uid.phone` with access to `IAvApService` (14 callback interfaces).
+- Decoupling this allows third-party navigation apps to output audio without unwanted system muting.
+- See [`docs/en/raio-x/01-apis-aidl.md`](docs/en/raio-x/01-apis-aidl.md).
 
-Essa property controla se a central faz **cold boot** vs. **suspend/resume** no key-off. Hoje o default é suspend — por isso o combo `AUDIO 5s + confirmar` é necessário pra forçar cold boot. Se setarmos a prop pra `1`, teoricamente cada keyoff vira cold boot.
+---
 
-**Implicações potenciais:**
-- Elimina a complexidade LP0 (cada partida é cold boot do zero)
-- Carro liga mais devagar (3-5s de boot vs. instant)
-- Consumo potencialmente maior em períodos parado
+## Long-Term (High Cost / High Risk)
 
-**O que precisa:** `su -c "setprop persist.sys.keyoff_reboot 1"` + testar com rollback preparado. Baixo custo, mas tem que ir no carro.
+- **Ghidra reverse engineering of `/system/bin/daupdater`**: Exact byte-level modeling of OTA verification in the recovery binary.
+- **Hardware HALs in `/system/vendor/lib/*.so`**: Display, audio, CAN bus HALs. (Hardware brick risk).
+- **Bootloader modification**: Unrecoverable without eMMC desoldering. Out of scope.
 
-→ [`docs/raio-x/04-system-properties.md`](docs/raio-x/04-system-properties.md)
+---
 
-## Em médio prazo (bons alvos sem fase definida ainda)
+## Discarded Routes (Documented)
 
-### Diag APKs — menus escondidos / PINs
-
-Os 4 APKs de diagnóstico (`DealerDiag`, `DeveloperDiag`, `PreShipmentDiag`, `LetDiag`) e o service `DiagApService.apk` tipicamente carregam PINs de dealer, modos de serviço e menus escondidos. Alto potencial de Easter egg, baixo risco de brick (são UIs). Descompilar via REA + ver strings de PIN, intents que abrem Activities privadas, etc.
-
-→ [`docs/raio-x/05-trust-map.md`](docs/raio-x/05-trust-map.md)
-
-### Steering wheel API
-
-`IStrgSwApService` + 8 listeners cobrem eventos do volante (`IStrgSwRotaryKeyEventApServiceListener`, `IStrgSwMotionMenuApServiceListener`, etc). Mapeamento dos botões físicos vive aqui. Baixo custo pra hookar atalhos personalizados.
-
-→ [`docs/raio-x/01-apis-aidl.md § appservice.strgsw`](docs/raio-x/01-apis-aidl.md)
-
-### Vehicle info completa
-
-`IVehicleInfoManagerApService` tem 37 listeners cobrindo marcha, velocidade, voltagem IG, ângulo do volante, VIN, FOB key atual (perfil por motorista!), sensores de ré, etc. Toda a telemetria do carro passa por aqui.
-
-→ [`docs/raio-x/01-apis-aidl.md § appservice.vehicleinfomanager`](docs/raio-x/01-apis-aidl.md)
-
-### Audio pipeline (bypass de ducking)
-
-Nosso AutoOk hoje não interfere com áudio, mas outros apps nossos poderiam. `AV.apk` roda como `android.uid.phone` com acesso a `IAvApService` (14 interfaces callback). Entender o pipeline permite, por exemplo, publicar áudio sem o sistema baixar o volume.
-
-→ [`docs/raio-x/01-apis-aidl.md § appservice.avapservice`](docs/raio-x/01-apis-aidl.md)
-
-### Fluxo oficial de OTA (sem EvilValet)
-
-`SystemUpdate.apk` é o alvo original do EvilValet. Entender por dentro como ele valida pacotes pode abrir caminho pra deploy sem exploit, se um dia a Honda fechar essa porta. Baixa prioridade enquanto EvilValet funcionar.
-
-→ [`docs/raio-x/05-trust-map.md`](docs/raio-x/05-trust-map.md)
-
-## Em longo prazo (alto custo / alto risco)
-
-- **Ghidra em `/system/bin/daupdater`** — entender exatamente como o recovery valida pacotes OTA
-- **Ghidra em `/system/vendor/lib/*.so`** — HALs de display, áudio, CAN. Modificar aqui tem risco real de brick de hardware.
-- **Modificar bootloader** — recuperável só com acesso físico à eMMC. Fora de escopo prático.
-
-Nenhum destes está sendo considerado hoje.
-
-## Descartado (com motivo preservado)
-
-Rotas que foram investigadas e descartadas. Documentar pra não re-descobrir:
-
-| Rota | Motivo da descartação |
+| Route | Reason for Abandonment |
 |---|---|
-| Entrar na whitelist Mitsubishi pra remover v0.4.0 | Whitelist é UX-only. Não afeta LP0. V0.4.0 já é o padrão oficial. [`MAPA` §16.3](docs/MAPA.md) |
-| SuperSU como mediator | Substituiria nosso `su` por um com prompt Activity → bloqueia `Runtime.exec("su")`. Quebra o AutoOk. [`MAPA` §16.1](docs/MAPA.md) |
-| Xposed Framework | Alto risco de bootloop. Zero precedente em Andromeda. Recuperável só via rollback OTA. [`MAPA` §16.2](docs/MAPA.md) |
-| ~~Modificar `DaLauncher.apk` via smali~~ | **Re-habilitada como Fase 10 em 2026-10-20** após descoberta do gate `sDisclamerFlg` + signature singular do DaLauncher. Ver seção "Em curto prazo" acima. [`docs/fase10-pre-planejamento-2026-10-20.md`](docs/fase10-pre-planejamento-2026-10-20.md) |
+| White-listing in Mitsubishi Whitelist | Whitelist is UX-only for installations. Does not affect LP0. |
+| SuperSU as mediator | Replaces `su` with an interactive GUI prompt, breaking automated headless scripts. |
+| Xposed Framework | High risk of bootloop; zero precedent on Andromeda Tegra 3. |
 
-## Melhorias de ferramentas (não ligadas ao carro)
+---
 
-Mantido pra referência cruzada com `CONTRIBUTING.md`:
+## Tooling & Documentation Improvements
 
-- Preencher `docs/pt-BR/01, 02, 04, 05, 06` (hoje são atalhos para fase7)
-- Traduzir `docs/pt-BR/` completo para `docs/en/`
-- GitHub Pages com MkDocs Material
-- CI básico que valida `python3 tooling/ota-build/build.py`
-- Social preview image + logo em versões (dark/light, favicon)
+- Translate remaining historical phase narratives into English.
+- Complete documentation mirroring between Portuguese and English.
+- Continuous Integration tests for python OTA builders.
+- Detailed compatibility matrix for non-BR trims (US, EU, JP, AU).
 
-## Como ajudar com qualquer um dos itens acima
-
-Ver [`CONTRIBUTING.md`](CONTRIBUTING.md). Issues com template "nova-safra" e "bug-report" prontos no repo.
+For contributing guidelines, see [`CONTRIBUTING.md`](CONTRIBUTING.md).

@@ -1,54 +1,56 @@
 # deodex-apk.sh
 
-Converte um APK **odex-only** (como todos os `/system/app/` e `/system/vendor/app/` do dump 0040) em um APK com `classes.dex` injetado, pronto para análise estática via JADX, apktool, REA ou qualquer ferramenta Android padrão.
+Converts an **odex-only** APK (such as all `/system/app/` and `/system/vendor/app/` APKs in dump 0040) into a standalone APK with injected `classes.dex`, ready for static analysis via JADX, apktool, REA, or any standard Android reverse engineering tool.
 
-## Por que isso é necessário
+*Language:* 🇺🇸 **English**
 
-A ROM da central Mitsubishi (Andromeda / Tegra 3 / Android 4.2.2) **pré-dexa** todos os APKs em build time. O que fica em disco é:
+---
 
-- `App.apk` — manifest + resources + nada de bytecode
-- `App.odex` — bytecode Dalvik otimizado, dependente do framework (BOOTCLASSPATH)
+## Why This Is Needed
 
-JADX abre `App.apk` e reporta `class_count: 1`, porque não há `classes.dex` dentro. Para analisar, é preciso desodexar.
+The Mitsubishi head unit ROM (Andromeda / Tegra 3 / Android 4.2.2) **pre-dexes** all system APKs at build time:
 
-## O que o script faz
+- `App.apk` — contains manifest + resources, but no bytecode.
+- `App.odex` — optimized Dalvik bytecode, linked against the boot framework (`BOOTCLASSPATH`).
 
-1. Localiza `<APK>.odex` ao lado do APK de entrada.
-2. Monta um bootclasspath temporário juntando `/system/framework/*.odex` + `/system/vendor/framework/*.odex` do dump (configurável via `BOOTCLASSPATH_SRC_DIRS`).
-3. `baksmali deodex` → árvore `.smali`.
-4. `smali assemble` → `classes.dex`.
-5. Copia o APK original e injeta `classes.dex` com `zip -j`.
-6. Workspace temporário em `/tmp` é apagado no final (`trap`).
+Opening `App.apk` in JADX directly reports `class_count: 1` because there is no `classes.dex` inside. To decompile and analyze the bytecode, it must be deodexed.
 
-A saída fica em `tooling/apks-decoded/<NomeAPK>-deodexed.apk`.
+---
 
-## Uso
+## What the Script Does
+
+1. Locates `<APK>.odex` adjacent to the input APK.
+2. Builds a temporary bootclasspath combining `/system/framework/*.odex` + `/system/vendor/framework/*.odex` from the system dump.
+3. Runs `baksmali deodex` → produces `.smali` tree.
+4. Runs `smali assemble` → produces `classes.dex`.
+5. Re-packages the APK with injected `classes.dex` via `zip -j`.
+6. Cleans up temporary `/tmp` files upon exit.
+
+Output is saved to `tooling/apks-decoded/<APKName>-deodexed.apk`.
+
+---
+
+## Usage
 
 ```bash
 ./tooling/deodex/deodex-apk.sh tooling/apks-dumped/dump-0040/vendor-app/DaLauncher.apk
 ```
 
-Variáveis opcionais:
+### Configuration Options
 
-| Variável | Default | O que controla |
+| Variable | Default | Purpose |
 |---|---|---|
-| `API_LEVEL` | `17` | Nível de API alvo (Android 4.2.2 = 17) |
-| `OUT_DIR` | `tooling/apks-decoded` | Onde a APK de saída é escrita |
-| `BOOTCLASSPATH_SRC_DIRS` | `dump-0040/{system-framework,vendor-framework}` | Diretórios com `.odex` do BOOTCLASSPATH, separados por `:` |
-| `BAKSMALI_JAR` | `tooling/references/ic1101/apk-rebuilder/input/baksmali-2.5.2.jar` | Jar do baksmali |
-| `SMALI_JAR` | mesmo path, `smali-2.5.2.jar` | Jar do smali |
+| `API_LEVEL` | `17` | Target API level (Android 4.2.2 = 17) |
+| `OUT_DIR` | `tooling/apks-decoded` | Directory where output APK is stored |
+| `BOOTCLASSPATH_SRC_DIRS` | `dump-0040/{system-framework,vendor-framework}` | Framework directories with `.odex` files, separated by `:` |
+| `BAKSMALI_JAR` | `tooling/references/ic1101/apk-rebuilder/input/baksmali-2.5.2.jar` | Baksmali jar path |
+| `SMALI_JAR` | `tooling/references/ic1101/apk-rebuilder/input/smali-2.5.2.jar` | Smali jar path |
 
-## Pré-requisitos
+---
 
-- JDK 17+ no PATH
-- `zip` no PATH
-- Baksmali/smali 2.5.2 em `tooling/references/ic1101/apk-rebuilder/input/` (vem do `MIGRATION/setup.sh`, que clona o `librick/ic1101`)
-- Dump dos frameworks em `tooling/apks-dumped/dump-0040/{system-framework,vendor-framework}` (vem do deep-scan — ver §20.4 do MAPA)
+## Prerequisites
 
-## Validado em
-
-- `DaLauncher.apk` (2026-10-19): 579 arquivos smali, `classes.dex` de 1.2 MB, REA reconheceu 216 classes incluindo `OpeningDivideActivity`.
-
-## Limitação
-
-O script usa `-a 17` fixo. Para APKs com target SDK diferente, exportar `API_LEVEL` antes. Nenhuma APK do dump-0040 observado até agora foge do API 17.
+- JDK 17+ in `PATH`
+- `zip` utility in `PATH`
+- Baksmali/smali 2.5.2 jars
+- System framework dump in `tooling/apks-dumped/dump-0040/{system-framework,vendor-framework}`

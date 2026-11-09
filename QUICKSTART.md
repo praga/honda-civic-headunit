@@ -1,48 +1,52 @@
-# 🚀 Quick Start — Deploy em 20 minutos
+# 🚀 Quick Start — Deploy in 20 minutes
 
-Guia resumido para deployar na sua central Honda Civic G10 (safra `1.F187.16` BR confirmada).
+A quick-start guide to deploying to your Honda Civic G10 head unit (confirmed on BR firmware `1.F187.16`).
 
-**Para outras safras**, antes deste quickstart, siga [`docs/pt-BR/03-descobrindo-sua-safra.md`](docs/pt-BR/03-descobrindo-sua-safra.md).
+**For other firmware versions**, please follow [`docs/en/03-finding-your-firmware.md`](docs/en/03-finding-your-firmware.md) before this quickstart.
 
-> ⚠️ **ANTES DE COMEÇAR, LEIA O [DISCLAIMER.md](DISCLAIMER.md).**
-> Risco de brick permanente. Troca de central: R$ 1.000-2.000. Você é 100% responsável.
+> ⚠️ **BEFORE YOU BEGIN, READ [DISCLAIMER.md](DISCLAIMER.md).**  
+> Risk of permanent brick. Head unit replacement: ~$200–$400. You are 100% responsible.
 
-## 🧭 Duas rotas de deploy
-
-O projeto hoje oferece duas camadas de solução para o aviso. Você escolhe uma ou aplica as duas em sequência.
-
-| | 🔹 **Camada 1 — AutoOk** (safety net) | 🎯 **Camada 2 — Fase 10** (solução definitiva) |
-|---|---|---|
-| O que faz | APK + `su` em `/system/`. Monitora logcat, dispara `input tap` no OK | Patch smali de 1 instrução no `DaLauncher.apk`. Força pular o `DisclaimerFragment` |
-| Experiência visual | Aviso aparece e some sozinho em ~3 s | **Aviso não aparece.** Tela "ecoscore" por ~1 s (Fase 10.1) |
-| Risco | Baixo (APK side-car, zero toque em app Mitsubishi existente) | Médio (modifica o DaLauncher — launcher principal; rede de segurança = pacote rollback) |
-| Esforço | ~20 min total | ~30 min (precisa Camada 1 primeiro, ou outra forma de root pra validar o pipeline) |
-| Reversível | Sim, via `prepare-pendrive-rollback.sh` sem argumento | Sim, via `prepare-pendrive-rollback.sh tooling/ota-build/output-dalauncher-restore` |
-
-**Recomendação:** Camada 1 primeiro, testar 1 semana. Depois Camada 2 em cima. Este QUICKSTART detalha a Camada 1 passo a passo — a Camada 2 segue o mesmo esquema de pendrive OTA, roteiro completo em [`docs/fase10-execucao-2026-10-27.md`](docs/fase10-execucao-2026-10-27.md).
+*Language:* 🇺🇸 **English** · [🇧🇷 Português](QUICKSTART.pt-BR.md)
 
 ---
 
-## 🛠️ Pré-requisitos
+## 🧭 Two deployment routes
+
+The project currently provides two layers of solutions for the warning disclaimer. You can pick one or apply both in sequence.
+
+| | 🔹 **Layer 1 — AutoOk** (safety net) | 🎯 **Layer 2 — Phase 10** (definitive solution) |
+|---|---|---|
+| **What it does** | APK + `su` in `/system/`. Monitors logcat, issues `input tap` on OK | 1-instruction smali patch in `DaLauncher.apk`. Forces skipping `DisclaimerFragment` |
+| **Visual experience** | Warning appears and vanishes on its own in ~3 s | **Warning never appears.** "Ecoscore" screen for ~1 s (Phase 10.1) |
+| **Risk** | Low (sidecar APK, zero touches on existing Mitsubishi apps) | Medium (modifies DaLauncher — main launcher; rollback package safety net) |
+| **Effort** | ~20 min total | ~30 min (requires Layer 1 first or another root mechanism to validate the pipeline) |
+| **Reversible** | Yes, via `prepare-pendrive-rollback.sh` without arguments | Yes, via `prepare-pendrive-rollback.sh tooling/ota-build/output-dalauncher-restore` |
+
+**Recommendation:** Apply Layer 1 first, test for 1 week. Then apply Layer 2 on top. This QUICKSTART details Layer 1 step-by-step — Layer 2 follows the same OTA USB flash drive workflow; see full runbook in [`docs/en/fase10-deploy-2026-10-29/README.md`](docs/en/fase10-deploy-2026-10-29/README.md) and [`docs/fase10-execucao-2026-10-27.md`](docs/fase10-execucao-2026-10-27.md).
+
+---
+
+## 🛠️ Prerequisites
 
 ### Hardware
 
-- **Honda Civic G10** 2017 EXL BR (safra `1.F187.16` confirmada; outras não testadas)
-- **Pendrive USB-A** FAT32-formatável (qualquer tamanho ≥ 100MB funciona)
-- **Notebook/PC Linux** (preferência Fedora/Ubuntu)
-- Acesso físico ao carro
+- **Honda Civic G10** 2017 EXL BR (firmware `1.F187.16` confirmed; other models untested)
+- **USB-A flash drive** FAT32-formatted (any size ≥ 100MB works)
+- **Linux PC / Laptop** (Fedora or Ubuntu preferred, macOS also works with appropriate tools)
+- Physical access to the car
 
-### Software no PC
+### PC Software
 
 ```bash
-# Dependências via package manager (Fedora)
+# Dependencies via package manager (Fedora)
 sudo dnf install -y java-17-openjdk-devel android-tools git curl unzip parted dosfstools python3
 
-# OU Ubuntu/Debian
+# OR Ubuntu/Debian
 sudo apt install -y openjdk-17-jdk android-tools-adb git curl unzip parted dosfstools python3
 ```
 
-E Android SDK para `apksigner`:
+And Android SDK for `apksigner`:
 
 ```bash
 mkdir -p ~/sdks/Android/cmdline-tools
@@ -57,42 +61,42 @@ $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.2"
 
 ---
 
-## 📥 1. Clonar o projeto e dependências
+## 📥 1. Clone project and dependencies
 
 ```bash
 git clone https://github.com/khalleb/honda-civic-headunit.git
 cd honda-civic-headunit
 
-# Clonar os projetos de referência (ic1101 provê o ota-builder)
+# Clone reference projects (ic1101 provides ota-builder)
 mkdir -p tooling/references
 git clone https://github.com/librick/ic1101.git tooling/references/ic1101
 git clone https://github.com/codeage/root-honda.git tooling/references/root-honda
 ```
 
-## 📦 2. Preparar binários (busybox + su)
+## 📦 2. Prepare binaries (busybox + su)
 
-Esses binários vêm dos projetos de terceiros clonados acima:
+These binaries are sourced from the third-party reference projects cloned above:
 
 ```bash
 mkdir -p tooling/ota-build/bin
 
-# busybox do HondaHack (via root-honda packages)
-# Se não houver HondaHack.apk no root-honda, baixe de outra fonte confiável
-# ou compile busybox-static ARM você mesmo.
+# busybox from HondaHack (via root-honda packages)
+# If HondaHack.apk is not in root-honda, download from another trusted source
+# or compile busybox-static ARM yourself.
 unzip -o tooling/references/root-honda/packages/HondaHack.apk -d /tmp/hondahack
 cp /tmp/hondahack/res/raw/busybox tooling/ota-build/bin/busybox
 
-# su do root-honda
+# su from root-honda
 cp tooling/references/root-honda/su tooling/ota-build/bin/su
 ```
 
-## 🔨 3. Compilar o APK AutoOk
+## 🔨 3. Build the AutoOk APK
 
 ```bash
 cd our-apk
 ./gradlew clean assembleRelease
 
-# Assinar com debug keystore
+# Sign with debug keystore
 APKSIGNER=$ANDROID_SDK_ROOT/build-tools/33.0.2/apksigner
 $APKSIGNER sign \
   --ks ~/.android/debug.keystore \
@@ -100,105 +104,105 @@ $APKSIGNER sign \
   --out app/build/outputs/apk/release/AutoOk.apk \
   app/build/outputs/apk/release/app-release-unsigned.apk
 
-# Copiar pro overlay do pacote OTA
+# Copy to the OTA package overlay
 cp app/build/outputs/apk/release/AutoOk.apk ../tooling/ota-build/overlay/system/app/AutoOk.apk
 cd ..
 ```
 
-## 📦 4. Montar o pacote OTA
+## 📦 4. Build the OTA package
 
 ```bash
-# Pacote de INSTALL (AutoOk.apk + su)
+# INSTALL package (AutoOk.apk + su)
 python3 tooling/ota-build/build.py
 
-# Pacote de ROLLBACK (remove AutoOk.apk e su — rede de segurança)
+# ROLLBACK package (removes AutoOk.apk and su — safety net)
 python3 tooling/ota-build/build-rollback.py
 ```
 
-Saída:
+Output:
 
 ```
 INFO: rom_type=0040 -> tooling/ota-build/output/<timestamp>/0040/SwUpdate.mdt
 OK: tooling/ota-build/output/<timestamp>
 ```
 
-## 💾 5. Preparar pendrive
+## 💾 5. Prepare the USB flash drive
 
-Pluga o pendrive. Descobre o device (CUIDADO — rodar no device errado destrói dados do notebook!):
+Plug in the USB drive. Identify the device node (CAUTION — writing to the wrong device will wipe laptop drives!):
 
 ```bash
 lsblk -o NAME,SIZE,MODEL,TRAN
 ```
 
-Confirme qual `/dev/sdX` é o pendrive (`TRAN=usb`). Depois:
+Confirm which `/dev/sdX` corresponds to your flash drive (`TRAN=usb`). Then:
 
 ```bash
-# Formatar FAT32 MSDOS (destrói conteúdo!)
+# Format as FAT32 MSDOS (wipes contents!)
 sudo ./tooling/scripts/format-pendrive.sh /dev/sdX
 
-# Carregar pacote INSTALL
+# Write the INSTALL package
 sudo ./tooling/scripts/prepare-pendrive-install.sh /dev/sdX
 
-# (Opcional, mas RECOMENDADO) Carregar outro pendrive com ROLLBACK pra ter de emergência
-# ou guardar o rollback no notebook: tooling/ota-build/output-rollback/<timestamp>/
+# (Optional, but RECOMMENDED) Flash another drive with ROLLBACK for emergency use
+# or keep the rollback build on your laptop: tooling/ota-build/output-rollback/<timestamp>/
 ```
 
-Puxa o pendrive do notebook.
+Unmount and remove the USB drive from your laptop.
 
 ---
 
-## 🚗 6. Deploy no carro
+## 🚗 6. Deploy in the car
 
-1. **Pendrive na porta USB-A frontal** da central (perto do volante, não a do console central).
-2. **Carro ligado** — chave em ACC ou ON, motor desligado.
-3. **Segure o botão `AUDIO`** da central por **5 segundos**. Aparece diálogo "Quer reiniciar?".
-4. **Confirma reiniciar**. A central inicia o fluxo:
-   - Tela "Software update → Copying..." (barra 0% → 100%)
-   - Central reinicia sozinha
-   - Pode mostrar barra do recovery
-   - Reboot normal
-5. **Quando a central voltar à tela normal** (ou de Aviso), **puxa o pendrive**.
-6. **Clica OK uma última vez manualmente** nessa primeira vez (APK vai começar a atuar no PRÓXIMO boot).
+1. **Insert the USB flash drive into the front USB-A port** of the head unit (near the driver/steering wheel, not inside the center armrest console).
+2. **Turn car on** — key in ACC or ON position, engine off.
+3. **Press and hold the `AUDIO` button** on the head unit for **5 seconds**. A dialog appears: "Do you want to restart?".
+4. **Confirm restart**. The head unit begins the update flow:
+   - Screen shows "Software update → Copying..." (progress bar 0% → 100%)
+   - Head unit reboots automatically
+   - May show recovery progress bar
+   - Normal boot resumes
+5. **Once the head unit returns to the normal screen** (or the Warning screen), **unplug the flash drive**.
+6. **Tap OK one last time manually** on this first boot (the APK will start operating on the NEXT boot).
 
-Tempo total: ~5-10 minutos de fluxo OTA.
+Total time: ~5–10 minutes for the OTA process.
 
-## ✅ 7. Testar
+## ✅ 7. Test
 
-- **Desligue o carro** (gira a chave para OFF).
-- **Ligue de novo** (gira para ACC ou ON).
-- A tela de Aviso aparece normalmente.
-- **~10 segundos depois, deve sumir sozinha.**
-- Teste várias vezes: desliga/liga, desliga/liga. Deve interceptar em TODAS.
+- **Turn off the car** (switch key to OFF).
+- **Turn back on** (switch key to ACC or ON).
+- The Warning screen appears normally.
+- **~3–10 seconds later, it should dismiss automatically.**
+- Test multiple times: turn off/on, off/on. It should intercept EVERY time.
 
-Se funcionar: **🎉 projeto completo**. Pode remover a tela de aviso da sua lista mental.
+If it works: **🎉 Project complete!** You never have to tap the disclaimer again.
 
 ---
 
-## 🆘 Troubleshooting rápido
+## 🆘 Quick troubleshooting
 
-| Sintoma | Possível causa | Ação |
+| Symptom | Probable cause | Action |
 |---|---|---|
-| Depois do AUDIO 5s, não aparece "Quer reiniciar?" | Combo wrong, central muito antiga | Tenta puxar fusível do radio por 15 min, religar — força cold boot |
-| Tela "Software update" não aparece | Pendrive não detectado OU rom_type errado | Confere pendrive em outra porta USB, re-formata; se persistir, dumpar logs via Error History |
-| Aviso aparece mas APK não bate | Service não iniciou OU needle da Activity errado | Veja [troubleshooting detalhado](docs/pt-BR/06-troubleshooting.md) |
-| Central não boota depois | Algo deu errado | **Deploy do rollback urgente.** [docs/pt-BR/07-rollback.md](docs/pt-BR/07-rollback.md) |
+| Holding AUDIO 5s doesn't prompt "Do you want to restart?" | Wrong key combo, very old firmware | Try pulling the radio fuse for 15 min and reconnecting — forces cold boot |
+| "Software update" screen doesn't show up | USB drive not detected OR wrong `rom_type` | Test drive in another USB port, re-format; if it persists, dump logs via Error History |
+| Warning screen appears but APK doesn't dismiss it | Service didn't start OR Activity logcat needle mismatch | See [detailed troubleshooting](docs/en/06-troubleshooting.md) |
+| Head unit fails to boot afterwards | Something went wrong | **Deploy rollback package immediately.** See [`docs/en/07-rollback.md`](docs/en/07-rollback.md) |
 
-Detalhes completos: [`docs/pt-BR/06-troubleshooting.md`](docs/pt-BR/06-troubleshooting.md).
+Detailed troubleshooting guide: [`docs/en/06-troubleshooting.md`](docs/en/06-troubleshooting.md).
 
 ## 🔙 Rollback
 
-Se precisar reverter, carregue o pendrive com o pacote ROLLBACK e aplique igual ao INSTALL:
+If you ever need to revert, prepare the USB drive with the ROLLBACK package and apply it identically to INSTALL:
 
 ```bash
 sudo ./tooling/scripts/prepare-pendrive-rollback.sh /dev/sdX
 ```
 
-Depois no carro: mesmo protocolo (porta frontal + AUDIO 5s + confirma reiniciar). Pacote remove `AutoOk.apk` e `su` do `/system`.
+Then in the car: same protocol (front USB port + hold AUDIO 5s + confirm restart). The package cleans up `AutoOk.apk` and `su` from `/system`.
 
 ---
 
-**Próximo nível:**
-- [`docs/fase7-deploy-2026-10-16/`](docs/fase7-deploy-2026-10-16/) — Camada 1 completa (fluxo EvilValet, análise do APK, descobertas da safra BR)
-- [`docs/fase10-deploy-2026-10-29/README.md`](docs/fase10-deploy-2026-10-29/README.md) — **Camada 2 (Fase 10)**: patch smali no DaLauncher, timeline do deploy real, SHAs/md5 dos artefatos
-- [`docs/fase10-execucao-2026-10-27.md`](docs/fase10-execucao-2026-10-27.md) — checklist passo a passo da Fase 10 no carro
-- [`docs/MAPA.md`](docs/MAPA.md) — atlas navegável da central
+**Next steps & deep dives:**
+- [`docs/en/00-overview.md`](docs/en/00-overview.md) — Complete architecture and overview
+- [`docs/en/fase10-deploy-2026-10-29/README.md`](docs/en/fase10-deploy-2026-10-29/README.md) — **Layer 2 (Phase 10)**: DaLauncher smali patch, real deploy timeline, artifact SHAs/md5s
+- [`docs/MAPA.md`](docs/MAPA.md) / [`docs/en/MAP.md`](docs/en/MAP.md) — Head unit navigable system atlas
+- [`DISCOVERIES.md`](DISCOVERIES.md) — Technical findings index

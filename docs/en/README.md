@@ -1,89 +1,72 @@
 # 🇺🇸 English Documentation
 
-Practical documentation to use/adapt the project. For those who just want to deploy on their own HU.
+Comprehensive documentation to understand, deploy, or adapt the project.
+
+*Language:* 🇺🇸 **English** · [🇧🇷 Português](../pt-BR/README.md)
+
+---
 
 ## Index
 
-| Doc | Description |
+| Document | Description |
 |---|---|
-| [`00-overview.md`](00-overview.md) | What the project does and why |
+| [`00-overview.md`](00-overview.md) | What the project does, architecture, and threat model |
 | [`01-attack-architecture.md`](01-attack-architecture.md) | How the EvilValet attack works |
-| [`02-prerequisites.md`](02-prerequisites.md) | Hardware, software, keystore |
-| [`03-finding-your-firmware.md`](03-finding-your-firmware.md) | How to adapt for other firmware |
-| [`04-building-the-package.md`](04-building-the-package.md) | Compile the OTA package step by step |
-| [`05-deploying-in-car.md`](05-deploying-in-car.md) | Protocol in the car |
-| [`06-troubleshooting.md`](06-troubleshooting.md) | Decision tree when something fails |
-| [`07-rollback.md`](07-rollback.md) | Reverting everything |
+| [`02-prerequisites.md`](02-prerequisites.md) | Hardware, software, keystores, and dependencies |
+| [`03-finding-your-firmware.md`](03-finding-your-firmware.md) | How to adapt for other trims and firmware builds |
+| [`04-building-the-package.md`](04-building-the-package.md) | Compiling the OTA update package step-by-step |
+| [`05-deploying-in-car.md`](05-deploying-in-car.md) | Step-by-step in-car deployment protocol |
+| [`06-troubleshooting.md`](06-troubleshooting.md) | Decision tree and diagnostic logs |
+| [`07-rollback.md`](07-rollback.md) | Reverting everything back to 100% factory state |
 | [`08-backups.md`](08-backups.md) | Complete backup catalog |
-| [`09-fase10-remove-warning.md`](09-fase10-remove-warning.md) | 🎯 Phase 10 — remove the warning for good via DaLauncher patch |
-| [`fase10-deploy-2026-10-29/README.md`](fase10-deploy-2026-10-29/README.md) | 📋 Phase 10 deep-dive — timeline of the real deploy, gate logs, bytecode proof, Phase 10.1 |
-| [`whitelist-mitsubishi-2026-10-19.md`](whitelist-mitsubishi-2026-10-19.md) | 🔬 Full static analysis of the Mitsubishi whitelist (not a gate for LP0) |
-| [`raio-x/README.md`](raio-x/README.md) | 🗺️ X-ray Layer 1 — overview of the platform scan (364 AIDLs, 445 broadcasts, trust map) |
-| [`raio-x/01-apis-aidl.md`](raio-x/01-apis-aidl.md) | AIDL interfaces (364 unique) |
+| [`09-fase10-remove-warning.md`](09-fase10-remove-warning.md) | 🎯 Phase 10 — permanent warning elimination via DaLauncher smali patch |
+| [`MAP.md`](MAP.md) | 🗺️ Head unit navigable system atlas (partitions, APKs, IPC, bug hall of fame) |
+| [`fase10-deploy-2026-10-29/README.md`](fase10-deploy-2026-10-29/README.md) | 📋 Phase 10 deployment timeline, gate logs, bytecode proof, Phase 10.1 |
+| [`fase10-route-decision-2026-10-23.md`](fase10-route-decision-2026-10-23.md) | Analysis choosing Route B (AOSP re-sign) over Route A (odex patching) |
+| [`fase10-execution-2026-10-27.md`](fase10-execution-2026-10-27.md) | Execution checklist and test protocol used on deploy day |
+| [`fase10-pre-planning-2026-10-20.md`](fase10-pre-planning-2026-10-20.md) | Initial discovery of `sDisclamerFlg` static boolean gate |
+| [`fase7-deploy-2026-10-16/README.md`](fase7-deploy-2026-10-16/README.md) | 🚀 Phase 7 — AutoOk APK + su initial deployment |
+| [`whitelist-mitsubishi-2026-10-19.md`](whitelist-mitsubishi-2026-10-19.md) | 🔬 Full static analysis of the Mitsubishi installation whitelist |
+| [`next-session.md`](next-session.md) | Quick operational reference for resuming work |
+| [`raio-x/README.md`](raio-x/README.md) | 🔬 X-Ray Layer 1 overview (364 AIDLs, 445 broadcasts, trust map) |
+| [`raio-x/01-apis-aidl.md`](raio-x/01-apis-aidl.md) | AIDL interfaces (364 unique contracts) |
 | [`raio-x/02-broadcasts.md`](raio-x/02-broadcasts.md) | Broadcast actions (445 across 48 prefixes) |
-| [`raio-x/03-content-providers.md`](raio-x/03-content-providers.md) | ContentProvider authorities and URIs (27/52) |
-| [`raio-x/04-system-properties.md`](raio-x/04-system-properties.md) | System properties referenced in bytecode (48) |
-| [`raio-x/05-trust-map.md`](raio-x/05-trust-map.md) | Trust map — sharedUserId / permissions per APK (110) |
-| [`raio-x/06-diag-apks.md`](raio-x/06-diag-apks.md) | 🔧 Diag APKs — 91 DealerDiag screens classified read/write, no PIN |
-| [`raio-x/07-services-re.md`](raio-x/07-services-re.md) | RE of core services: steering wheel, official OTA, vehicle, audio |
-| [`raio-x/08-github-landscape-2026-10-27.md`](raio-x/08-github-landscape-2026-10-27.md) | GitHub landscape of 33 adjacent repos — KingoSU finding, Mitsubishi TX codes |
+| [`raio-x/03-content-providers.md`](raio-x/03-content-providers.md) | ContentProvider authorities and URIs |
+| [`raio-x/04-system-properties.md`](raio-x/04-system-properties.md) | System properties referenced in bytecode |
+| [`raio-x/05-trust-map.md`](raio-x/05-trust-map.md) | Trust map — sharedUserId & permissions per APK |
+| [`raio-x/06-diag-apks.md`](raio-x/06-diag-apks.md) | Diagnostic APKs — 91 DealerDiag screens classified |
+| [`raio-x/07-services-re.md`](raio-x/07-services-re.md) | Core services reverse engineering |
+| [`raio-x/08-github-landscape-2026-10-27.md`](raio-x/08-github-landscape-2026-10-27.md) | Landscape of 33 adjacent GitHub repositories |
+| [`raio-x/09-camera-re.md`](raio-x/09-camera-re.md) | Reverse camera IPC, AIDL, broadcast, & CAN reverse signal |
 
-## Recommended path
+---
 
-### If this is your first contact with the project
+## Recommended Learning Path
 
-1. [`00-overview.md`](00-overview.md) — context
-2. [`../../DISCLAIMER.md`](../../DISCLAIMER.md) — read the risks
-3. If firmware `1.F187.16` BR: follow [`../../QUICKSTART.md`](../../QUICKSTART.md) (Portuguese — commands are universal) or walk through [`04-building-the-package.md`](04-building-the-package.md) + [`05-deploying-in-car.md`](05-deploying-in-car.md)
-4. If other firmware: [`03-finding-your-firmware.md`](03-finding-your-firmware.md)
+### Getting Started & Deploying
+1. [`00-overview.md`](00-overview.md) — high-level context.
+2. [`../../DISCLAIMER.md`](../../DISCLAIMER.md) — understand the real risks.
+3. If firmware `1.F187.16` BR: follow [`../../QUICKSTART.md`](../../QUICKSTART.md).
+4. If other firmware: [`03-finding-your-firmware.md`](03-finding-your-firmware.md).
 
-### If you already deployed and something went wrong
+### Deep Technical Research
+1. [`MAP.md`](MAP.md) — Navigable atlas of all partitions, binaries, and APKs.
+2. [`fase7-deploy-2026-10-16/`](fase7-deploy-2026-10-16/) — 7 technical documents covering discovery narrative and technical recipes.
+3. [`fase10-deploy-2026-10-29/README.md`](fase10-deploy-2026-10-29/README.md) — Smali patching of `DaLauncher.apk`.
+4. [`raio-x/`](raio-x/) — Complete scan of all 364 AIDL interfaces, broadcasts, and permissions.
 
-1. [`06-troubleshooting.md`](06-troubleshooting.md) — complete decision tree
-2. If nothing helps: [`07-rollback.md`](07-rollback.md) — revert everything
-3. Open an [issue](../../.github/ISSUE_TEMPLATE/) with APK log + deploy logs
+---
 
-### If you're a researcher / want to understand deeply
+## Tested Firmware
 
-1. [`00-overview.md`](00-overview.md) — summary
-2. [`../MAPA.md`](../MAPA.md) — navigable atlas of the HU (partitions, APKs, binaries) — mostly Portuguese labels but structure is clear
-3. [`../fase7-deploy-2026-10-16/`](../fase7-deploy-2026-10-16/) — 7 technical docs with discovery narrative, technical findings, deep dives (Portuguese)
+- **Honda Civic 2017 EXL Brazil**, DA version `1.F187.16`, `rom_type` `0040`. ✅ Working in production.
 
-## Tested firmware
+---
 
-- **Honda Civic 2017 EXL Brazil**, DA version `1.F187.16`, rom_type `0040`. ✅ Working.
+## Contributing
 
-## Likely compatible (not tested)
-
-- Civic G10 2016-2021 US/EU/AU (same framework)
-- CR-V 2016-2021 (some firmware)
-- Accord 2016+ with Display Audio
-- Civic Avancier, Civic URV
-
-For other firmware, see [`03-finding-your-firmware.md`](03-finding-your-firmware.md) — the procedure to find your `custom_rom.type` via a diagnostic OTA package.
-
-## Report your firmware
-
-If you have a different Honda G10 variant, please report via the [issue template](../../.github/ISSUE_TEMPLATE/nova-safra.md). Both Portuguese and English accepted.
-
-Even if you don't deploy, just the technical fields help build the compatibility matrix.
-
-## Translation help wanted
-
-The main user-facing docs (00-08) are translated. Still Portuguese-only:
-
-- All of `../fase7-deploy-2026-10-16/` — technical journey, APK architecture, deploy recipe (narrative)
-- `../MAPA.md` → `docs/en/MAP.md` — navigable atlas of the head unit
-
-Fork + PR welcome. See [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md).
-
-## Credits
-
-See main [README.en.md](../../README.en.md).
+See [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) to report new firmwares or contribute bug fixes.
 
 ## License
 
 Code: MIT. Documentation: CC BY 4.0.
-
-Honda/Mitsubishi proprietary software referenced is owned by respective holders. This repo does
-NOT distribute proprietary firmware — you must dump from your own HU.

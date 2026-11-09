@@ -1,5 +1,7 @@
 # MAPA — Atlas da Central Honda Civic G10 BR
 
+*Language:* 🇺🇸 [English (MAP.md)](en/MAP.md) · 🇧🇷 **Português**
+
 **Reflexo navegável do estado real da central multimídia (Honda Display Audio 7", Mitsubishi Andromeda, Tegra 3, Android 4.2.2).**
 
 Última sincronização: `2026-10-19` (REA integrado + fluxo de deodex automatizado + validação da `OpeningDivideActivity` + análise completa da whitelist Mitsubishi + mapeamento do recovery pós-LP0 via `PowerManagerBroadcastSender` + **raio-x de superfície completo** da plataforma: 364 AIDLs, 445 broadcasts, 27 content authorities, 48 sysprops, 110 APKs mapeados).
