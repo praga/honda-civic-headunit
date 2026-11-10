@@ -1,62 +1,62 @@
 ---
 name: "🐛 Bug report"
-about: Algo não funciona como deveria / Something isn't working
+about: Report an issue or unexpected behavior with the head unit tooling
 title: "[BUG] "
 labels: bug
 assignees: ''
 ---
 
-## 🇧🇷 Descrição / 🇺🇸 Description
+## Description
 
-<!-- O que está acontecendo? / What's happening? -->
+<!-- Describe clearly what is happening -->
 
-## Comportamento esperado / Expected behavior
+## Expected Behavior
 
-<!-- O que deveria acontecer? / What should happen? -->
+<!-- What should happen instead? -->
 
-## Passos pra reproduzir / Steps to reproduce
+## Steps to Reproduce
 
 1. 
 2. 
 3. 
 
-## Ambiente / Environment
+## Environment
 
-- **Safra da central (DA version):**
-- **Rom type:**
-- **OS do notebook:**
-- **Versão do Python:**
-- **Versão do Java:**
-- **Versão do Android SDK build-tools:**
+- **Head Unit Firmware / Build (`ro.build.id`):** (e.g. `1.F187.16`)
+- **ROM Type (`custom_rom.type`):** (e.g. `0040`)
+- **PC Operating System:** (e.g. Linux Fedora 44, Ubuntu 24.04, macOS)
+- **Python Version:**
+- **Java Version:**
+- **Android SDK build-tools Version:**
 
 ## Logs
 
-### `install-0040.log` ou `rollback-0040.log` do pendrive
+### `install-0040.log` or `rollback-0040.log` from USB drive
 
 ```
-cole aqui / paste here
+paste here
 ```
 
-### `result.log` do recovery
+### `result.log` from recovery
 
 ```
-cole aqui / paste here
+paste here
 ```
 
-### Logcat relevante (se APK já instalado)
+### Relevant Logcat (if APK is installed)
 
-Via Error History → Save do menu de serviço: `DAY/NIGHT + AUDIO + MENU` por 2s com áudio off → `Detail Information & Setting` → `Error History` → `Save`.
+Extracted via Service Menu → `Detail Information & Setting` → `Error History` → `Save` (Hold `DAY/NIGHT + AUDIO + MENU` for 2s with audio off).
 
-Grep sugerido:
+Suggested grep:
 
 ```bash
 grep -iE "AutoOk|daupdater|SwUpdate|OpeningDivide" logcat*
 ```
 
 ```
-cole aqui / paste here
+paste here
 ```
 
-## Screenshots (opcional / optional)
+## Screenshots / Photos (Optional)
 
-<!-- Se tiver foto da tela da central ou screenshots do notebook -->
+<!-- Attach any photos of the head unit screen or laptop console output -->
