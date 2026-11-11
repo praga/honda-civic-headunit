@@ -19,7 +19,7 @@ set -euo pipefail
 
 DEV="${1:-}"
 if [ -z "$DEV" ]; then
-  echo "ERRO: passar device do pendrive. Ex: sudo $0 /dev/sda"
+  echo "ERRO: passar device do pendrive. Ex: sudo $0 /dev/sda (Linux) ou $0 /dev/disk4 (macOS)"
   exit 1
 fi
 
@@ -28,22 +28,49 @@ if [ ! -b "$DEV" ]; then
   exit 1
 fi
 
-# Guard de identidade — evita formatar o SSD por acidente
-TRAN=$(lsblk -no TRAN "$DEV" | head -1 | xargs)
-MODEL=$(lsblk -no MODEL "$DEV" | head -1 | xargs)
-SIZE=$(lsblk -no SIZE "$DEV" | head -1 | xargs)
-# Só o disco inteiro. Sem isso, /dev/sda1 passaria no teste de USB e o parted
-# escreveria uma tabela de partição dentro da partição (igual à guarda do
-# lib-pendrive.sh).
-TYPE=$(lsblk -dno TYPE "$DEV" | head -1 | xargs)
-if [ "$TYPE" != "disk" ]; then
-  echo "ERRO: $DEV é '$TYPE'; passar o disco inteiro (ex: /dev/sda, não /dev/sda1)."
-  exit 1
+IS_MACOS=0
+if [ "$(uname -s)" = "Darwin" ]; then
+  IS_MACOS=1
 fi
-if [ "$TRAN" != "usb" ]; then
-  echo "ERRO: $DEV não é USB (tran=$TRAN). Abortando por segurança."
-  echo "Confira com: lsblk"
-  exit 1
+
+# Guard de identidade — evita formatar o SSD por acidente
+if [ "$IS_MACOS" -eq 1 ]; then
+  _plist=$(diskutil info -plist "$DEV" 2>/dev/null || true)
+  if [ -z "$_plist" ]; then
+    echo "ERRO: diskutil não conseguiu inspecionar $DEV"
+    exit 1
+  fi
+  WHOLE=$(printf '%s' "$_plist" | plutil -extract WholeDisk raw -o - - 2>/dev/null || true)
+  TRAN=$(printf '%s' "$_plist" | plutil -extract BusProtocol raw -o - - 2>/dev/null || true)
+  MODEL=$(printf '%s' "$_plist" | plutil -extract MediaName raw -o - - 2>/dev/null || true)
+  BYTES=$(printf '%s' "$_plist" | plutil -extract TotalSize raw -o - - 2>/dev/null || echo 0)
+  SIZE=$(awk -v b="$BYTES" 'BEGIN { printf "%.1fG", b/1000000000 }')
+  if [ "$WHOLE" != "true" ]; then
+    echo "ERRO: $DEV não é o disco inteiro; passar o disco inteiro (ex: /dev/disk4, não /dev/disk4s1)."
+    exit 1
+  fi
+  if [ "$TRAN" != "USB" ]; then
+    echo "ERRO: $DEV não é USB (BusProtocol=$TRAN). Abortando por segurança."
+    echo "Confira com: diskutil list external"
+    exit 1
+  fi
+else
+  TRAN=$(lsblk -no TRAN "$DEV" | head -1 | xargs)
+  MODEL=$(lsblk -no MODEL "$DEV" | head -1 | xargs)
+  SIZE=$(lsblk -no SIZE "$DEV" | head -1 | xargs)
+  # Só o disco inteiro. Sem isso, /dev/sda1 passaria no teste de USB e o parted
+  # escreveria uma tabela de partição dentro da partição (igual à guarda do
+  # lib-pendrive.sh).
+  TYPE=$(lsblk -dno TYPE "$DEV" | head -1 | xargs)
+  if [ "$TYPE" != "disk" ]; then
+    echo "ERRO: $DEV é '$TYPE'; passar o disco inteiro (ex: /dev/sda, não /dev/sda1)."
+    exit 1
+  fi
+  if [ "$TRAN" != "usb" ]; then
+    echo "ERRO: $DEV não é USB (tran=$TRAN). Abortando por segurança."
+    echo "Confira com: lsblk"
+    exit 1
+  fi
 fi
 
 echo "=== Vai FORMATAR o seguinte device ==="
@@ -59,26 +86,32 @@ if [ "$CONFIRM" != "yes" ]; then
   exit 0
 fi
 
-# Desmonta qualquer partição montada
-for p in "${DEV}"[0-9]*; do
-  if [ -b "$p" ]; then
-    mp=$(lsblk -no MOUNTPOINT "$p" | head -1)
-    if [ -n "$mp" ]; then
-      echo "Desmontando $p (de $mp)"
-      umount "$p"
+if [ "$IS_MACOS" -eq 1 ]; then
+  echo "=== Desmontando e formatando $DEV como MBR FAT32 (macOS) ==="
+  diskutil unmountDisk "$DEV" || true
+  diskutil eraseDisk FAT32 HONDA_OTA MBRFormat "$DEV"
+else
+  # Desmonta qualquer partição montada
+  for p in "${DEV}"[0-9]*; do
+    if [ -b "$p" ]; then
+      mp=$(lsblk -no MOUNTPOINT "$p" | head -1)
+      if [ -n "$mp" ]; then
+        echo "Desmontando $p (de $mp)"
+        umount "$p"
+      fi
     fi
-  fi
-done
+  done
 
-echo "=== Criando tabela MSDOS + partição FAT32 ==="
-parted -s "$DEV" mklabel msdos
-parted -s "$DEV" mkpart primary fat32 1MiB 100%
-parted -s "$DEV" set 1 lba on
-partprobe "$DEV" || true
-sleep 1
+  echo "=== Criando tabela MSDOS + partição FAT32 ==="
+  parted -s "$DEV" mklabel msdos
+  parted -s "$DEV" mkpart primary fat32 1MiB 100%
+  parted -s "$DEV" set 1 lba on
+  partprobe "$DEV" || true
+  sleep 1
 
-echo "=== Formatando ${DEV}1 como FAT32 ==="
-mkfs.vfat -F 32 -n HONDA_OTA "${DEV}1"
+  echo "=== Formatando ${DEV}1 como FAT32 ==="
+  mkfs.vfat -F 32 -n HONDA_OTA "${DEV}1"
+fi
 
 echo ""
 echo "=== PRONTO ==="

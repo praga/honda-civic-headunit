@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROM_TYPE="${ROM_TYPE:-0040}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-DUMP="$REPO_ROOT/tooling/apks-dumped/dump-0040"
+DUMP="$REPO_ROOT/tooling/apks-dumped/dump-$ROM_TYPE"
 APK_SRC="$DUMP/vendor-app/DaLauncher.apk"
 ODEX_SRC="$DUMP/vendor-app/DaLauncher.odex"
 PATCH_FILES=(
@@ -106,8 +107,12 @@ if [ "$CERT_SHA" != "$EXPECTED_CERT_SHA256" ]; then
     exit 1
 fi
 
-APK_SIZE="$(stat -c%s "$OUT_APK")"
-APK_SHA="$(sha256sum "$OUT_APK" | awk '{print $1}')"
+APK_SIZE="$(wc -c < "$OUT_APK" | tr -d ' ')"
+if command -v sha256sum >/dev/null 2>&1; then
+    APK_SHA="$(sha256sum "$OUT_APK" | awk '{print $1}')"
+else
+    APK_SHA="$(shasum -a 256 "$OUT_APK" | awk '{print $1}')"
+fi
 echo ""
 echo "OK."
 echo "  saida:  $OUT_APK"

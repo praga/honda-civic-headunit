@@ -40,11 +40,14 @@ OTA_BUILDER_SRC = PROJECT / "tooling" / "references" / "ic1101" / "ota-builder" 
 INPUT_DIR = PROJECT / "tooling" / "references" / "ic1101" / "ota-builder" / "input"
 OUT_DIR = HERE / "output-enable-adb"
 
-sys.path.insert(0, str(OTA_BUILDER_SRC))
+for _p in (HERE, OTA_BUILDER_SRC):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 import main as upstream
+import ota_common
 
 BUSYBOX_SRC = HERE / "bin" / "busybox"
-ROM_TYPE = "0040"
+ROM_TYPE = ota_common.default_rom_type()
 
 VALID_MODES = ("device", "host")
 # Rótulos do gate no pendrive — ficam explícitos pro operador.
@@ -153,7 +156,9 @@ def main() -> None:
         "--mode", choices=VALID_MODES, default="device",
         help="valor gravado em persist.sys.usb1_mode (default: device = habilita ADB)",
     )
+    ota_common.add_rom_type_arg(parser)
     args = parser.parse_args()
+    rom_type = args.rom_type or ROM_TYPE
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     logger = logging.getLogger("civichmi-ota-enable-adb")
@@ -166,7 +171,7 @@ def main() -> None:
     upstream.write_lf(build_dir / "SwUpdate2.txt", f"Ver:{upstream.NEW_COMMAND_VERSION}\n")
 
     signed = upstream.build_mdt(
-        ROM_TYPE, [], {}, build_dir,
+        rom_type, [], {}, build_dir,
         overlay_dir=HERE / "overlay",
         update_binary=INPUT_DIR / "update-binary",
         sleep_binary=INPUT_DIR / "sleep" / "output" / "sleep",

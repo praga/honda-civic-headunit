@@ -245,7 +245,37 @@ class SequenciaCompleta(_ComPastaTemporaria):
         self.assertIn("PRONTO", r.stdout)
 
 
+class RomTypeParametrizado(_ComPastaTemporaria):
+    def _criar_build_rom(self, raiz, timestamp, rom_type, mdt=b"mdt"):
+        build = raiz / timestamp
+        (build / rom_type).mkdir(parents=True)
+        (build / "SwUpdate2.txt").write_text("Ver:IC1101\n")
+        (build / rom_type / "SwUpdate.mdt").write_bytes(mdt)
+        return build
+
+    def test_rom_type_env_sobrescreve_padrao_em_resolve_copy_e_verify(self):
+        out_dir = self.raiz / "output-rom"
+        build = self._criar_build_rom(out_dir, "20261111T120000Z", "1115", mdt=b"rom-au")
+        pendrive = self.raiz / "pendrive"
+        pendrive.mkdir()
+        r = _bash(
+            f'export ROM_TYPE=1115\n'
+            f'source "{SCRIPTS_DIR}/lib-pendrive.sh"\n'
+            f'resolved=$(resolve_build_dir "{out_dir}" build.py)\n'
+            f'echo "RESOLVED=$resolved"\n'
+            f'copy_package "$resolved" "{pendrive}"\n'
+            f'verify_copy "$resolved" "{pendrive}"\n'
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(f"RESOLVED={build}", r.stdout)
+        self.assertIn("OK   1115/SwUpdate.mdt", r.stdout)
+        self.assertEqual((pendrive / "1115" / "SwUpdate.mdt").read_bytes(), b"rom-au")
+
+
 class ScriptsDePendrive(unittest.TestCase):
+    def test_prepare_pendrive_dump_apks_esta_presente(self):
+        self.assertIn("prepare-pendrive-dump-apks.sh", [p.name for p in WRAPPERS])
+
     def test_todo_prepare_pendrive_carrega_a_lib_e_para_sem_device(self):
         self.assertGreaterEqual(len(WRAPPERS), 5)
         for script in WRAPPERS:

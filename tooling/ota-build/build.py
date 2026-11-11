@@ -25,6 +25,7 @@ Mantém:
 """
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
 from datetime import UTC, datetime
@@ -37,10 +38,13 @@ INPUT_DIR = PROJECT / "tooling" / "references" / "ic1101" / "ota-builder" / "inp
 OVERLAY_DIR = HERE / "overlay"
 OUT_DIR = HERE / "output"
 
-sys.path.insert(0, str(OTA_BUILDER_SRC))
+for _p in (HERE, OTA_BUILDER_SRC):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 import main as upstream
+import ota_common
 
-ROM_TYPES = ["0040"]
+ROM_TYPES = ota_common.default_rom_types()
 
 
 CURRENT_ROM_TYPE: str = ""
@@ -157,6 +161,11 @@ upstream.build_mdt = _tagged_build_mdt
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build EvilValet AutoOk + su OTA package")
+    ota_common.add_rom_type_arg(parser, multiple=True)
+    args = parser.parse_args()
+    rom_types = args.rom_types or ROM_TYPES
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     logger = logging.getLogger("civichmi-ota-build")
 
@@ -178,7 +187,7 @@ def main() -> None:
             overlay_path, m.uid, m.gid, m.mode,
         )
 
-    for rt in ROM_TYPES:
+    for rt in rom_types:
         signed = upstream.build_mdt(
             rt, overlay_paths, meta, build_dir,
             overlay_dir=OVERLAY_DIR,

@@ -9,6 +9,7 @@ GERADORES = [
     "build.py",
     "build-rollback.py",
     "build-dump-raw.py",
+    "build-dump-apks.py",
     "build-deep-scan.py",
     "build-diagnostic.py",
     "build-enable-adb.py",
@@ -31,7 +32,7 @@ def _updater_script_de(filename):
     if filename == "build.py":
         mod.CURRENT_ROM_TYPE = "0040"
         return mod.our_create_updater_script([], {}, mod.upstream.PARTITIONS)
-    if filename in ("build-diagnostic.py", "build-enable-adb.py"):
+    if filename in ("build-diagnostic.py", "build-enable-adb.py", "build-dump-apks.py"):
         return mod._updater_script("0040")
     return mod._updater_script("0040", {}, mod.upstream.PARTITIONS)
 
@@ -118,6 +119,46 @@ class OperacoesEspecificas(unittest.TestCase):
         mod = _load("build-enable-adb.py")
         with self.assertRaises(ValueError):
             mod._updater_script("0040", "nao-existe")
+
+
+class BuildDumpApksERomType(unittest.TestCase):
+    def test_dump_apks_monta_somente_leitura_e_copia_dalauncher(self):
+        mod = _load("build-dump-apks.py")
+        s = mod._updater_script("1115")
+        self.assertIn("mount -t ext4 -o ro /dev/block/platform/sdhci-tegra.3/by-name/APP /tmp/sys", s)
+        self.assertIn("mount -t ext4 -o ro /dev/block/platform/sdhci-tegra.3/by-name/CAP /tmp/ven", s)
+        self.assertNotIn('mount("ext4"', s)
+        self.assertIn("DaLauncher.apk", s)
+        self.assertIn("DaLauncher.odex", s)
+        self.assertIn("/mnt/usbdrive1/dump-1115/system-build.prop", s)
+        self.assertIn("/mnt/usbdrive1/dump-1115/vendor-build.prop", s)
+        self.assertIn("/mnt/usbdrive1/dump-1115/system-framework", s)
+        self.assertIn("/mnt/usbdrive1/DUMP-APKS.OK", s)
+        self.assertIn("/mnt/usbdrive1/DUMP-APKS.FAIL", s)
+
+    def test_ota_common_respeita_rom_type_env_e_cli(self):
+        import argparse
+        import os
+        from unittest import mock
+
+        ota_common = _load("ota_common.py")
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ROM_TYPE", None)
+            self.assertEqual(ota_common.default_rom_type(), "0040")
+            self.assertEqual(ota_common.default_rom_types(), ["0040"])
+        with mock.patch.dict(os.environ, {"ROM_TYPE": "1115"}):
+            self.assertEqual(ota_common.default_rom_type(), "1115")
+            self.assertEqual(ota_common.default_rom_types(), ["1115"])
+        with mock.patch.dict(os.environ, {"ROM_TYPE": "0040, 1115"}):
+            self.assertEqual(ota_common.default_rom_types(), ["0040", "1115"])
+
+        ap_single = argparse.ArgumentParser()
+        ota_common.add_rom_type_arg(ap_single)
+        self.assertEqual(ap_single.parse_args(["--rom-type", "1115"]).rom_type, "1115")
+
+        ap_multi = argparse.ArgumentParser()
+        ota_common.add_rom_type_arg(ap_multi, multiple=True)
+        self.assertEqual(ap_multi.parse_args(["--rom-type", "0040", "--rom-type", "1115"]).rom_types, ["0040", "1115"])
 
 
 if __name__ == "__main__":

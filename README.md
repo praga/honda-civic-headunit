@@ -12,7 +12,7 @@
 [![Firmware](https://img.shields.io/badge/tested_firmware-1.F187.16_BR-orange)]()
 [![Phase 10](https://img.shields.io/badge/Phase_10-warning_removed_2026--10--29-success)](docs/en/fase10-deploy-2026-10-29/README.md)
 [![AutoOk](https://img.shields.io/badge/AutoOk-v0.5.4_safety_net-informational)]()
-[![CI](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml)
+[![CI](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml)
 
 🇺🇸 **English** · [🇧🇷 Português](README.pt-BR.md)
 
@@ -111,10 +111,10 @@ A second patch (Phase 10.1) reduces an intermediate ecoscore screen from ~6 s to
 
 ### 🤷 Likely compatible (not tested)
 
-Same Mitsubishi Andromeda framework — likely works with adaptation of 2 values:
-- **Civic G10 2016-2021** (US, EU, AU, other BR variants)
+Same Mitsubishi Andromeda framework (NVIDIA Tegra 3 / Android 4.2.2) — likely works by setting your regional `ROM_TYPE` (e.g. `1115` for US, `2250` for EU, or extracted ADR code for Australia):
+- **Civic G10 2016–2018 (pre-facelift capacitive volume slider)** & 2019–2021 (US, EU, AU including VTi-LX, other BR variants)
 - **Civic Avancier, Civic URV**
-- **CR-V 2016-2021** (some firmware)
+- **CR-V 2016–2021** (some firmware)
 - **Accord 2016+** with Display Audio
 
 If you have a different firmware, [help the community](#-contributing) — just 2 pieces of info confirm it works: your `custom_rom.type` and screen resolution.
@@ -125,23 +125,23 @@ If you have a different firmware, [help the community](#-contributing) — just 
 
 ## 🚀 Quick Start
 
-**Own a 2017 Civic EXL BR?** Deploy in ~20 minutes:
+Deploy in ~20 minutes on **Linux or macOS**:
 
-👉 **[QUICKSTART.md](QUICKSTART.md)** (currently Portuguese — commands are universal)
+👉 **[QUICKSTART.md](QUICKSTART.md)**
 
 Summary:
 ```bash
-git clone https://github.com/khalleb/honda-civic-headunit.git
+git clone https://github.com/praga/honda-civic-headunit.git
 cd honda-civic-headunit
-./MIGRATION/setup.sh                     # clone dependencies
-cd our-apk && ./gradlew assembleRelease  # build APK
+./MIGRATION/setup.sh                                   # clone dependencies
+cd our-apk && ./gradlew assembleRelease                # build APK
 # ... sign + copy to overlay ...
-python3 tooling/ota-build/build.py       # OTA package
-sudo ./tooling/scripts/prepare-pendrive-install.sh /dev/sda
+ROM_TYPE=0040 python3 tooling/ota-build/build.py       # build OTA package (replace 0040 with your ROM type)
+sudo ROM_TYPE=0040 ./tooling/scripts/prepare-pendrive-install.sh /dev/sdX   # or /dev/diskN on macOS
 # In the car: AUDIO 5s + confirm reboot
 ```
 
-**Different firmware?** First adapt following [`docs/en/03-finding-your-firmware.md`](docs/en/03-finding-your-firmware.md).
+**Different firmware (e.g., AU / US / EU)?** First check your `rom_type` following [`docs/en/03-finding-your-firmware.md`](docs/en/03-finding-your-firmware.md).
 
 ---
 
@@ -176,6 +176,7 @@ Some highlights:
 Infrastructure that lives alongside the project and works for other HUs with the same stack:
 
 - [`tooling/deodex/deodex-apk.sh`](tooling/deodex/deodex-apk.sh) — automates odex → APK for any Mitsubishi APK (all vendor-app is pre-dexed). Validated on 160 APKs from the dump.
+- [`tooling/ota-build/build-dump-apks.py`](tooling/ota-build/build-dump-apks.py) + [`tooling/scripts/prepare-pendrive-dump-apks.sh`](tooling/scripts/prepare-pendrive-dump-apks.sh) — lightweight read-only OTA package (`~30 MB`, no full 2.8 GB block dump) that extracts `DaLauncher.apk` / `.odex`, frameworks, and `build.prop` files into `dump-<ROM_TYPE>/` for Phase 10 on any region.
 - EvilValet OTA package with embedded `busybox` ARM — ours needs it because the BR recovery lacks `/sbin/sh`. Works for other firmwares on the same recovery.
 - Deep-scan OTA package — dumps `/system`, `/data/system/packages.xml`, partition tree + `/proc/*` in a single pass. Feeds the unit atlas.
 - [REA](https://github.com/morluto/rea) + MCP flow already configured in [`tooling/deodex/`](tooling/deodex/) — static analysis of any Android APK through the agent.
@@ -197,7 +198,7 @@ Original goal achieved on 2026-10-29. Everything below is exploratory; details i
 
 | Doc | Description |
 |---|---|
-| [`QUICKSTART.md`](QUICKSTART.md) | Deploy in 20 min (Portuguese — commands universal) |
+| [`QUICKSTART.md`](QUICKSTART.md) | Deploy in 20 min (Linux & macOS) |
 | [`docs/en/00-overview.md`](docs/en/00-overview.md) | What the project does and why |
 | [`docs/en/01-attack-architecture.md`](docs/en/01-attack-architecture.md) | How the EvilValet attack works |
 | [`docs/en/02-prerequisites.md`](docs/en/02-prerequisites.md) | Hardware, software, keystore |
@@ -211,17 +212,17 @@ Original goal achieved on 2026-10-29. Everything below is exploratory; details i
 
 ### 🇧🇷 In Portuguese (original)
 
-Same docs under [`docs/pt-BR/`](docs/pt-BR/). The deep technical dive and the deploy narrative in [`docs/fase7-deploy-2026-10-16/`](docs/fase7-deploy-2026-10-16/) are still Portuguese-only — PRs welcome.
+Original Portuguese documentation is preserved under [`docs/pt-BR/`](docs/pt-BR/), [`docs/MAPA.md`](docs/MAPA.md), [`docs/fase7-deploy-2026-10-16/`](docs/fase7-deploy-2026-10-16/), and [`docs/raio-x/`](docs/raio-x/).
 
 ### 🔬 Deep technical dive
 
-- [`DISCOVERIES.md`](DISCOVERIES.md) — Navigable index of technical findings (Portuguese, link labels mostly English)
+- [`DISCOVERIES.md`](DISCOVERIES.md) — Navigable index of technical findings
 - [`ROADMAP.md`](ROADMAP.md) — Next steps, discarded routes with reason
-- [`docs/MAPA.md`](docs/MAPA.md) — **Navigable atlas of the HU** (partitions, APKs, services, pipeline) — mostly Portuguese labels but structure is clear
-- [`docs/fase7-deploy-2026-10-16/`](docs/fase7-deploy-2026-10-16/) — Layer 1 (AutoOk): journey, discoveries, recipes, dumps, APK architecture, maintenance (Portuguese)
+- [`docs/en/MAP.md`](docs/en/MAP.md) — **Navigable atlas of the HU** (partitions, APKs, services, pipeline)
+- [`docs/en/fase7-deploy-2026-10-16/`](docs/en/fase7-deploy-2026-10-16/) — Layer 1 (AutoOk): journey, discoveries, recipes, dumps, APK architecture, maintenance
 - [`docs/en/fase10-deploy-2026-10-29/`](docs/en/fase10-deploy-2026-10-29/) — **Layer 2 (smali patch)**: deploy timeline, Phase 10.1, car logs
-- [`docs/raio-x/`](docs/raio-x/) — Static platform scan: 364 AIDLs, 445 broadcasts, 27 providers, 48 sysprops, trust map of 110 APKs + RE Layer 2 of the services (steering wheel, official OTA, vehicle, audio) + landscape scan of 33 adjacent GitHub projects
-- [`docs/whitelist-mitsubishi-2026-10-19.md`](docs/whitelist-mitsubishi-2026-10-19.md) — Full Mitsubishi whitelist flow + mapping of recovery after LP0
+- [`docs/en/raio-x/`](docs/en/raio-x/) — Static platform scan: 364 AIDLs, 445 broadcasts, 27 providers, 48 sysprops, trust map of 110 APKs + RE Layer 2 of the services (steering wheel, official OTA, vehicle, audio) + landscape scan of 33 adjacent GitHub projects
+- [`docs/en/whitelist-mitsubishi-2026-10-19.md`](docs/en/whitelist-mitsubishi-2026-10-19.md) — Full Mitsubishi whitelist flow + mapping of recovery after LP0
 
 ---
 
@@ -235,7 +236,7 @@ This project wouldn't exist without:
 
 **Our contribution** is the adaptation to the Brazilian firmware `1.F187.16` (rom type `0040`, `AUDIO 5s` combo for cold boot, discovery that BR recovery doesn't ship `/sbin/sh` and needs embedded busybox, persistent APK that re-arms after each tap, deep-scan pipeline to sync the HU atlas) **and Phase 10** (discovery of the `OpeningDivideActivity.sDisclamerFlg` gate as a static boolean in memory, two one-instruction smali patches, self-contained rebuild pipeline with `orig → patch` bytecode proof).
 
-Technical details: [`docs/fase7-deploy-2026-10-16/02-descobertas-tecnicas.md § 0`](docs/fase7-deploy-2026-10-16/02-descobertas-tecnicas.md#0-contribuições-novas-deste-projeto) (Portuguese).
+Technical details: [`docs/en/fase7-deploy-2026-10-16/02-technical-findings.md § 0`](docs/en/fase7-deploy-2026-10-16/02-technical-findings.md#0-novel-discoveries-from-this-project).
 
 ---
 
@@ -243,9 +244,9 @@ Technical details: [`docs/fase7-deploy-2026-10-16/02-descobertas-tecnicas.md § 
 
 We welcome:
 
-1. **Have another Honda G10 firmware?** Open an issue using the [`nova-safra.md`](.github/ISSUE_TEMPLATE/nova-safra.md) template. Include VIN prefix, DA version, `custom_rom.type`, screen resolution. We'll build a compatibility matrix.
+1. **Have another Honda G10 firmware (e.g., AU, US, EU)?** Open an issue using the [`nova-safra.md`](.github/ISSUE_TEMPLATE/nova-safra.md) template. Include VIN prefix, DA version, `custom_rom.type`, screen resolution. We'll build a compatibility matrix.
 2. **Found a bug or improvement?** Issues + PRs welcome.
-3. **Want to translate to another language?** Fork + PR with new `docs/<lang>/` folder. **Priority: complete the English translation of docs 01, 02, 04, 05, 06.**
+3. **Want to translate to another language?** Fork + PR with new `docs/<lang>/` folder.
 4. **Tested on another car and it worked?** Report via issue — becomes a row in the compatibility table.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for details.

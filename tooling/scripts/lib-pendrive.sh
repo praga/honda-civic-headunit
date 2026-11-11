@@ -18,9 +18,38 @@
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OTA_BUILD_DIR="$PROJECT_ROOT/tooling/ota-build"
 
-# custom_rom.type da nossa safra. O daupdater só procura
-# /mnt/usbdrive1/<rom_type>/SwUpdate.mdt, então só esse diretório vai pro pendrive.
-ROM_TYPE="0040"
+# custom_rom.type da nossa safra (padrão 0040; sobrescreva com ROM_TYPE=XXXX para outras regiões).
+# O daupdater só procura /mnt/usbdrive1/<rom_type>/SwUpdate.mdt, então só esse diretório vai pro pendrive.
+ROM_TYPE="${ROM_TYPE:-0040}"
+
+is_macos() {
+  [ "$(uname -s)" = "Darwin" ] && ! command -v lsblk >/dev/null 2>&1
+}
+
+_sha256_file() {
+  local f="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$f" | cut -d' ' -f1
+  else
+    shasum -a 256 "$f" | cut -d' ' -f1
+  fi
+}
+
+_is_mountpoint() {
+  local mp="$1"
+  if ! is_macos || command -v mountpoint >/dev/null 2>&1; then
+    mountpoint -q "$mp"
+  else
+    local norm="${mp%/}"
+    [ -n "$norm" ] || norm="/"
+    [ -d "$mp" ] && mount | grep -Fq " on $norm ("
+  fi
+}
+
+_darwin_plist_val() {
+  local dev="$1" key="$2"
+  diskutil info -plist "$dev" 2>/dev/null | plutil -extract "$key" raw -o - - 2>/dev/null || true
+}
 
 PART=""
 MP=""
@@ -60,6 +89,14 @@ check_device() {
   local dev="$1" type tran
   [ -n "$dev" ] || die "passar device do pendrive. Ex: sudo $0 /dev/sda [diretorio-de-build]"
   [ -b "$dev" ] || die "$dev não é um block device"
+  if is_macos; then
+    local whole proto
+    whole=$(_darwin_plist_val "$dev" WholeDisk)
+    [ "$whole" = "true" ] || die "$dev não é o disco inteiro; passar o disco inteiro (ex: /dev/disk4, não /dev/disk4s1)"
+    proto=$(_darwin_plist_val "$dev" BusProtocol)
+    [ "$proto" = "USB" ] || die "$dev não é USB (tran=${proto:-desconhecido}). Abortando por segurança."
+    return 0
+  fi
   type=$(lsblk -dno TYPE "$dev" | xargs)
   [ "$type" = "disk" ] || die "$dev é '$type'; passar o disco inteiro (ex: /dev/sda, não /dev/sda1)"
   tran=$(lsblk -dno TRAN "$dev" | xargs)
@@ -71,6 +108,22 @@ check_device() {
 # sda1 e o daupdater não acha o pacote. Melhor recusar aqui do que descobrir no carro.
 check_pendrive_format() {
   local dev="$1" pttype fstype
+  if is_macos; then
+    local part_id fsname pcontent
+    pttype=$(_darwin_plist_val "$dev" Content)
+    [ "$pttype" = "FDisk_partition_scheme" ] || die "$dev tem tabela '${pttype:-nenhuma}', mas o daupdater exige MSDOS. Formatar com: sudo tooling/scripts/format-pendrive.sh $dev"
+    part_id=$(diskutil list -plist "$dev" 2>/dev/null | plutil -extract AllDisksAndPartitions.0.Partitions.0.DeviceIdentifier raw -o - - 2>/dev/null || true)
+    [ -n "$part_id" ] || die "$dev não tem partição. Formatar com: sudo tooling/scripts/format-pendrive.sh $dev"
+    PART="/dev/$part_id"
+    [ -b "$PART" ] || die "$dev não tem partição válida ($PART). Formatar com: sudo tooling/scripts/format-pendrive.sh $dev"
+    fstype=$(_darwin_plist_val "$PART" FilesystemType)
+    fsname=$(_darwin_plist_val "$PART" FilesystemName)
+    pcontent=$(_darwin_plist_val "$PART" Content)
+    if [ "$fstype" != "msdos" ] || { [[ "$fsname" != *FAT32* ]] && [[ "$pcontent" != *FAT_32* ]]; }; then
+      die "$PART é '${fsname:-${fstype:-sem filesystem}}', mas o daupdater exige vfat (FAT32). Formatar com: sudo tooling/scripts/format-pendrive.sh $dev"
+    fi
+    return 0
+  fi
   pttype=$(lsblk -dno PTTYPE "$dev" | xargs)
   [ "$pttype" = "dos" ] || die "$dev tem tabela '${pttype:-nenhuma}', mas o daupdater exige MSDOS. Formatar com: sudo tooling/scripts/format-pendrive.sh $dev"
   PART=$(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" { print $1; exit }')
@@ -87,6 +140,19 @@ require_root() {
 # que o cleanup desmonta e apaga, inclusive quando o script morre no meio.
 mount_pendrive() {
   local part="$1" existing
+  if is_macos; then
+    existing=$(_darwin_plist_val "$part" MountPoint)
+    if [ -n "$existing" ]; then
+      MP="$existing"
+    else
+      diskutil mount "$part" >/dev/null || die "falha ao montar $part"
+      MP=$(_darwin_plist_val "$part" MountPoint)
+      [ -n "$MP" ] || die "falha ao obter ponto de montagem de $part"
+      MOUNTED_HERE=1
+    fi
+    echo "Pendrive em: $MP"
+    return 0
+  fi
   existing=$(lsblk -no MOUNTPOINT "$part" | head -1)
   if [ -n "$existing" ]; then
     MP="$existing"
@@ -116,7 +182,11 @@ cleanup() {
 check_capacity() {
   local min_mb="$1" size_mb confirm
   [ "$min_mb" -gt 0 ] || return 0
-  size_mb=$(df -BM --output=size "$MP" | tail -1 | tr -d 'M ')
+  if is_macos && [ "$(type -t df 2>/dev/null || true)" != "function" ]; then
+    size_mb=$(df -m "$MP" | awk 'NR==2 {print $2}')
+  else
+    size_mb=$(df -BM --output=size "$MP" | tail -1 | tr -d 'M ')
+  fi
   [ "$size_mb" -ge "$min_mb" ] && return 0
   echo "AVISO: pendrive de ${size_mb}MB; este pacote grava até ~${min_mb}MB de resultado."
   read -r -p "Prosseguir mesmo assim? (yes/no): " confirm
@@ -127,11 +197,22 @@ check_capacity() {
 # os dois pendrives da Fase 10 plugados, o device trocado apaga o outro. Mostra o
 # que vai ser apagado e só segue com "yes", como o format-pendrive.sh.
 confirm_wipe() {
-  local dev="$1" pkg="$2" content confirm
+  local dev="$1" pkg="$2" content confirm dev_info label_info
   content=$(ls -A "$MP" | tr '\n' ' ')
+  if is_macos; then
+    local media_name bytes size_gb
+    media_name=$(_darwin_plist_val "$dev" MediaName)
+    bytes=$(_darwin_plist_val "$dev" TotalSize)
+    size_gb=$(awk -v b="${bytes:-0}" 'BEGIN { printf "%.1fG", b/1000000000 }')
+    dev_info="${media_name:-USB} $size_gb"
+    label_info=$(_darwin_plist_val "$PART" VolumeName)
+  else
+    dev_info=$(lsblk -dno MODEL,SIZE "$dev" | xargs)
+    label_info=$(lsblk -dno LABEL "$PART" | xargs)
+  fi
   echo "=== Vai APAGAR o conteúdo deste pendrive ==="
-  echo "  Device:   $dev ($(lsblk -dno MODEL,SIZE "$dev" | xargs))"
-  echo "  Rótulo:   $(lsblk -dno LABEL "$PART" | xargs)"
+  echo "  Device:   $dev ($dev_info)"
+  echo "  Rótulo:   $label_info"
   echo "  Montado:  $MP"
   echo "  Conteúdo: ${content:-(vazio)}"
   read -r -p "Apagar e gravar o pacote $pkg? (yes/no): " confirm || confirm=""
@@ -148,6 +229,11 @@ copy_package() {
   local src="$1" dest="$2"
   cp -v "$src/SwUpdate2.txt" "$dest/"
   cp -rv "$src/$ROM_TYPE" "$dest/"
+  if [ "$(uname -s)" = "Darwin" ]; then
+    dot_clean -m "$dest" 2>/dev/null || true
+    find "$dest" \( -name '._*' -o -name '.DS_Store' \) -delete 2>/dev/null || true
+    rm -rf "$dest/.Spotlight-V100" "$dest/.Trashes" "$dest/.fseventsd" "$dest/.TemporaryItems" 2>/dev/null || true
+  fi
   sync
 }
 
@@ -155,15 +241,17 @@ copy_package() {
 # sha256sum leria dali. Descartar o cache força a leitura do próprio pendrive.
 drop_page_cache() {
   sync
-  echo 3 > /proc/sys/vm/drop_caches
+  if [ -w /proc/sys/vm/drop_caches ]; then
+    echo 3 > /proc/sys/vm/drop_caches
+  fi
 }
 
 # Uma linha OK/ERRO por arquivo do pacote. Retorna 1 se algum diferir ou faltar.
 verify_copy() {
   local src="$1" dest="$2" f expected on_drive status=0
   for f in SwUpdate2.txt "$ROM_TYPE/SwUpdate.mdt"; do
-    expected=$(sha256sum "$src/$f" | cut -d' ' -f1)
-    on_drive=$(sha256sum "$dest/$f" 2>/dev/null | cut -d' ' -f1) || true
+    expected=$(_sha256_file "$src/$f")
+    on_drive=$(_sha256_file "$dest/$f" 2>/dev/null) || true
     if [ -n "$on_drive" ] && [ "$expected" = "$on_drive" ]; then
       echo "OK   $f  $on_drive"
     else
@@ -177,7 +265,11 @@ verify_copy() {
 # Desmonta também quando a montagem era do desktop: o checklist manda puxar o
 # pendrive logo depois do PRONTO, e o vfat só marca o volume como limpo no umount.
 unmount_pendrive() {
-  umount "$MP" || die "a cópia está conferida, mas $MP não desmontou (pasta aberta em algum programa?). Ejetar pelo desktop antes de puxar o pendrive."
+  if is_macos && [ "$(type -t umount 2>/dev/null || true)" != "function" ]; then
+    diskutil unmount "$MP" >/dev/null || die "a cópia está conferida, mas $MP não desmontou (pasta aberta em algum programa?). Ejetar pelo desktop antes de puxar o pendrive."
+  else
+    umount "$MP" || die "a cópia está conferida, mas $MP não desmontou (pasta aberta em algum programa?). Ejetar pelo desktop antes de puxar o pendrive."
+  fi
   MOUNTED_HERE=0
 }
 
@@ -197,7 +289,7 @@ prepare_pendrive() {
 
   # Trava antes do rm -rf: o alvo tem que ser um ponto de montagem de verdade,
   # nunca uma pasta comum do notebook.
-  mountpoint -q "$MP" || die "$MP não é ponto de montagem; não vou limpar"
+  _is_mountpoint "$MP" || die "$MP não é ponto de montagem; não vou limpar"
   check_capacity "$min_mb"
   confirm_wipe "$dev" "$label"
 

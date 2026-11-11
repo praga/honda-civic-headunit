@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import hashlib
 import logging
 import os
@@ -20,11 +21,14 @@ DALAUNCHER_PATCHED_APK = PROJECT / "tooling" / "fase10" / "output" / "DaLauncher
 ANDROID_BT = Path(os.environ.get("ANDROID_BT", str(Path.home() / "sdks" / "Android" / "build-tools" / "33.0.2")))
 EXPECTED_CERT_SHA256 = "a40da80a59d170caa950cf15c18c454d47a39b26989d8b640ecd745ba71bf5dc"
 
-sys.path.insert(0, str(OTA_BUILDER_SRC))
+for _p in (HERE, OTA_BUILDER_SRC):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 import main as upstream
+import ota_common
 
 BUSYBOX_SRC = HERE / "bin" / "busybox"
-ROM_TYPE = "0040"
+ROM_TYPE = ota_common.default_rom_type()
 
 
 def _sha256(path: Path) -> str:
@@ -154,6 +158,11 @@ upstream.stage_tree = _patched_stage_tree
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build Phase 10 patched DaLauncher OTA package")
+    ota_common.add_rom_type_arg(parser)
+    args = parser.parse_args()
+    rom_type = args.rom_type or ROM_TYPE
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     logger = logging.getLogger("civichmi-ota-dalauncher-fase10")
 
@@ -168,7 +177,7 @@ def main() -> None:
     overlay_meta = {"system/vendor/app/DaLauncher.apk": upstream.FileMeta(0, 0, 0o644)}
 
     signed = upstream.build_mdt(
-        ROM_TYPE,
+        rom_type,
         overlay_paths,
         overlay_meta,
         build_dir,

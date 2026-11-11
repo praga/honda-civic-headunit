@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import hashlib
 import logging
 import shutil
@@ -22,12 +23,15 @@ EXPECTED_ODEX_SHA256 = "1497dc8497799faf8e86fe8f90fede54dd98502472f1c3e03b82b454
 EXPECTED_APK_MD5 = "20e0cba9e8b0d34d025cc1e1cb88992f"
 EXPECTED_ODEX_MD5 = "7b5842ef9980c9221655911b2d3e1d1e"
 
-sys.path.insert(0, str(OTA_BUILDER_SRC))
+for _p in (HERE, OTA_BUILDER_SRC):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 import main as upstream
 from main import FileMeta
+import ota_common
 
 BUSYBOX_SRC = HERE / "bin" / "busybox"
-ROM_TYPE = "0040"
+ROM_TYPE = ota_common.default_rom_type()
 
 OVERLAY_PATHS = [
     "system/vendor/app/DaLauncher.apk",
@@ -40,29 +44,44 @@ OVERLAY_META = {
 }
 
 
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
+def _digest(path: Path, algo: str) -> str:
+    h = hashlib.new(algo)
     with path.open("rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
-def _verify_source() -> None:
-    for src, want in [(DALAUNCHER_APK_SRC, EXPECTED_APK_SHA256), (DALAUNCHER_ODEX_SRC, EXPECTED_ODEX_SHA256)]:
+def _source_paths(rom_type: str) -> tuple[Path, Path]:
+    if rom_type == "0040":
+        return DALAUNCHER_APK_SRC, DALAUNCHER_ODEX_SRC
+    vendor_app = PROJECT / "tooling" / "apks-dumped" / f"dump-{rom_type}" / "vendor-app"
+    return vendor_app / "DaLauncher.apk", vendor_app / "DaLauncher.odex"
+
+
+def _verify_source(rom_type: str = "0040") -> tuple[str, str]:
+    apk_src, odex_src = _source_paths(rom_type)
+    for src in (apk_src, odex_src):
         if not src.is_file():
             raise SystemExit(f"missing source: {src}")
-        got = _sha256(src)
-        if got != want:
-            raise SystemExit(f"sha256 mismatch for {src}\n  expected {want}\n  got      {got}")
+    if rom_type == "0040":
+        for src, want in [(apk_src, EXPECTED_APK_SHA256), (odex_src, EXPECTED_ODEX_SHA256)]:
+            got = _digest(src, "sha256")
+            if got != want:
+                raise SystemExit(f"sha256 mismatch for {src}\n  expected {want}\n  got      {got}")
+        return EXPECTED_APK_MD5, EXPECTED_ODEX_MD5
+    return _digest(apk_src, "md5"), _digest(odex_src, "md5")
 
 
 def _patched_stage_tree(staging, overlay_paths, meta, rom_type, overlay_dir, update_binary, sleep_binary, partitions):
     _ = overlay_paths, meta, overlay_dir
 
+    apk_src, odex_src = _source_paths(rom_type)
+    apk_md5, odex_md5 = _verify_source(rom_type)
+
     for rel, src in [
-        ("system/vendor/app/DaLauncher.apk", DALAUNCHER_APK_SRC),
-        ("system/vendor/app/DaLauncher.odex", DALAUNCHER_ODEX_SRC),
+        ("system/vendor/app/DaLauncher.apk", apk_src),
+        ("system/vendor/app/DaLauncher.odex", odex_src),
     ]:
         dst = staging / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -83,10 +102,15 @@ def _patched_stage_tree(staging, overlay_paths, meta, rom_type, overlay_dir, upd
     meta_dir = staging / "META-INF" / "com" / "google" / "android"
     meta_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(update_binary, meta_dir / "update-binary")
-    (meta_dir / "updater-script").write_text(_updater_script(rom_type, partitions))
+    (meta_dir / "updater-script").write_text(_updater_script(rom_type, partitions, apk_md5, odex_md5))
 
 
-def _updater_script(rom_type: str, partitions) -> str:
+def _updater_script(
+    rom_type: str,
+    partitions,
+    apk_md5: str = EXPECTED_APK_MD5,
+    odex_md5: str = EXPECTED_ODEX_MD5,
+) -> str:
     _ = partitions
     BB = "/tmp/busybox"
     USB = "/mnt/usbdrive1"
@@ -134,7 +158,7 @@ def _updater_script(rom_type: str, partitions) -> str:
         # .OK só quando APK e odex restaurados têm o md5 do original da safra. É o
         # gate primário do §2.1 do checklist: ver o arquivo sem precisar ler o log.
         sh(
-            f"if {BB} md5sum {APK} | {BB} grep -q {EXPECTED_APK_MD5} && {BB} md5sum {ODEX} | {BB} grep -q {EXPECTED_ODEX_MD5}; "
+            f"if {BB} md5sum {APK} | {BB} grep -q {apk_md5} && {BB} md5sum {ODEX} | {BB} grep -q {odex_md5}; "
             f"then {BB} echo OK > {OKF}; {BB} echo restore-verified-OK >> {LOG}; "
             f"else {BB} echo FAIL > {FAILF}; {BB} echo restore-verify-FAILED >> {LOG}; fi"
         ),
@@ -159,18 +183,23 @@ upstream.stage_tree = _patched_stage_tree
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build original DaLauncher restore OTA package")
+    ota_common.add_rom_type_arg(parser)
+    args = parser.parse_args()
+    rom_type = args.rom_type or ROM_TYPE
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     logger = logging.getLogger("civichmi-ota-dalauncher-restore")
 
-    _verify_source()
-    logger.info("source sha256 OK (apk + odex)")
+    apk_md5, odex_md5 = _verify_source(rom_type)
+    logger.info("source verified (rom_type=%s, md5 apk=%s odex=%s)", rom_type, apk_md5, odex_md5)
 
     build_dir = OUT_DIR / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     build_dir.mkdir(parents=True, exist_ok=False)
     upstream.write_lf(build_dir / "SwUpdate2.txt", f"Ver:{upstream.NEW_COMMAND_VERSION}\n")
 
     signed = upstream.build_mdt(
-        ROM_TYPE,
+        rom_type,
         OVERLAY_PATHS,
         OVERLAY_META,
         build_dir,

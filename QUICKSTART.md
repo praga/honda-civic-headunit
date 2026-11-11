@@ -23,7 +23,7 @@ The project currently provides two layers of solutions for the warning disclaime
 | **Effort** | ~20 min total | ~30 min (requires Layer 1 first or another root mechanism to validate the pipeline) |
 | **Reversible** | Yes, via `prepare-pendrive-rollback.sh` without arguments | Yes, via `prepare-pendrive-rollback.sh tooling/ota-build/output-dalauncher-restore` |
 
-**Recommendation:** Apply Layer 1 first, test for 1 week. Then apply Layer 2 on top. This QUICKSTART details Layer 1 step-by-step — Layer 2 follows the same OTA USB flash drive workflow; see full runbook in [`docs/en/fase10-deploy-2026-10-29/README.md`](docs/en/fase10-deploy-2026-10-29/README.md) and [`docs/fase10-execucao-2026-10-27.md`](docs/fase10-execucao-2026-10-27.md).
+**Recommendation:** Apply Layer 1 first, test for 1 week. Then apply Layer 2 on top. This QUICKSTART details Layer 1 step-by-step — Layer 2 follows the same OTA USB flash drive workflow; see full runbook in [`docs/en/fase10-deploy-2026-10-29/README.md`](docs/en/fase10-deploy-2026-10-29/README.md) and [`docs/en/fase10-execution-2026-10-27.md`](docs/en/fase10-execution-2026-10-27.md).
 
 ---
 
@@ -31,27 +31,36 @@ The project currently provides two layers of solutions for the warning disclaime
 
 ### Hardware
 
-- **Honda Civic G10** 2017 EXL BR (firmware `1.F187.16` confirmed; other models untested)
-- **USB-A flash drive** FAT32-formatted (any size ≥ 100MB works)
-- **Linux PC / Laptop** (Fedora or Ubuntu preferred, macOS also works with appropriate tools)
+- **Honda Civic G10** 2017 EXL BR (`0040`) or other compatible unit (e.g., AU VTi-LX, US, EU — check [`docs/en/03-finding-your-firmware.md`](docs/en/03-finding-your-firmware.md))
+- **USB-A flash drive** FAT32-formatted with MBR/MSDOS partition table (any size ≥ 100MB works)
+- **Linux or macOS laptop**
 - Physical access to the car
 
 ### PC Software
 
+**Linux (Fedora / Ubuntu):**
 ```bash
-# Dependencies via package manager (Fedora)
+# Fedora
 sudo dnf install -y java-17-openjdk-devel android-tools git curl unzip parted dosfstools python3
 
-# OR Ubuntu/Debian
+# Ubuntu/Debian
 sudo apt install -y openjdk-17-jdk android-tools-adb git curl unzip parted dosfstools python3
 ```
 
-And Android SDK for `apksigner`:
+**macOS (Homebrew):**
+```bash
+brew install openjdk@17 android-platform-tools git python3
+```
+
+And Android SDK for `apksigner` (replace `linux` with `mac` in the URL for macOS):
 
 ```bash
 mkdir -p ~/sdks/Android/cmdline-tools
 cd ~/sdks/Android/cmdline-tools
+# Linux:
 curl -L -o cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+# macOS:
+# curl -L -o cmdtools.zip https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip
 unzip cmdtools.zip && rm cmdtools.zip && mv cmdline-tools latest
 
 export ANDROID_SDK_ROOT=~/sdks/Android
@@ -64,7 +73,7 @@ $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.2"
 ## 📥 1. Clone project and dependencies
 
 ```bash
-git clone https://github.com/khalleb/honda-civic-headunit.git
+git clone https://github.com/praga/honda-civic-headunit.git
 cd honda-civic-headunit
 
 # Clone reference projects (ic1101 provides ota-builder)
@@ -111,7 +120,12 @@ cd ..
 
 ## 📦 4. Build the OTA package
 
+Set `ROM_TYPE` if your head unit is not Brazilian (`0040`), e.g. `1115` for US or your extracted AU code:
+
 ```bash
+# Default (0040) — or pass ROM_TYPE=XXXX
+export ROM_TYPE=0040
+
 # INSTALL package (AutoOk.apk + su)
 python3 tooling/ota-build/build.py
 
@@ -131,17 +145,21 @@ OK: tooling/ota-build/output/<timestamp>
 Plug in the USB drive. Identify the device node (CAUTION — writing to the wrong device will wipe laptop drives!):
 
 ```bash
+# Linux:
 lsblk -o NAME,SIZE,MODEL,TRAN
+
+# macOS:
+diskutil list external
 ```
 
-Confirm which `/dev/sdX` corresponds to your flash drive (`TRAN=usb`). Then:
+Confirm which `/dev/sdX` (Linux) or `/dev/diskN` (macOS) corresponds to your USB flash drive. Then:
 
 ```bash
-# Format as FAT32 MSDOS (wipes contents!)
-sudo ./tooling/scripts/format-pendrive.sh /dev/sdX
+# Format as FAT32 MSDOS/MBR (wipes contents!)
+sudo ./tooling/scripts/format-pendrive.sh /dev/sdX          # or /dev/diskN on macOS
 
-# Write the INSTALL package
-sudo ./tooling/scripts/prepare-pendrive-install.sh /dev/sdX
+# Write the INSTALL package (remember ROM_TYPE if non-0040)
+sudo ROM_TYPE=$ROM_TYPE ./tooling/scripts/prepare-pendrive-install.sh /dev/sdX
 
 # (Optional, but RECOMMENDED) Flash another drive with ROLLBACK for emergency use
 # or keep the rollback build on your laptop: tooling/ota-build/output-rollback/<timestamp>/

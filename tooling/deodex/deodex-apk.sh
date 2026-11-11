@@ -25,7 +25,8 @@ if [ ! -f "$ODEX_PATH" ]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-DUMP_DEFAULT="$REPO_ROOT/tooling/apks-dumped/dump-0040"
+ROM_TYPE="${ROM_TYPE:-0040}"
+DUMP_DEFAULT="$REPO_ROOT/tooling/apks-dumped/dump-$ROM_TYPE"
 BOOTCLASSPATH_SRC_DIRS="${BOOTCLASSPATH_SRC_DIRS:-$DUMP_DEFAULT/system-framework:$DUMP_DEFAULT/vendor-framework}"
 API_LEVEL="${API_LEVEL:-17}"
 OUT_DIR="${OUT_DIR:-$REPO_ROOT/tooling/apks-decoded}"
@@ -96,7 +97,7 @@ OUT_APK="$OUT_DIR/$APK_NAME-deodexed.apk"
 cp "$APK_PATH" "$OUT_APK"
 (cd "$WORK_DIR" && zip -j -q "$OUT_APK" classes.dex)
 
-DEX_SIZE="$(stat -c%s "$WORK_DIR/classes.dex")"
+DEX_SIZE="$(wc -c < "$WORK_DIR/classes.dex" | tr -d ' ')"
 
 echo ""
 echo "OK."
