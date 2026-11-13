@@ -12,20 +12,30 @@ public class LogcatWatcher {
         void onDetected();
     }
 
+    public interface LineListener {
+        void onLine(String line);
+    }
+
     private static final String TAG = AutoOkConfig.LOGCAT_TAG;
 
     private final String activityNeedle;
     private final int initialWaitMs;
     private final OnDetected callback;
+    private final LineListener lineListener;
 
     private Thread thread;
     private volatile Process logcatProcess;
     private volatile boolean running;
 
     public LogcatWatcher(String activityNeedle, int initialWaitMs, OnDetected callback) {
+        this(activityNeedle, initialWaitMs, callback, null);
+    }
+
+    public LogcatWatcher(String activityNeedle, int initialWaitMs, OnDetected callback, LineListener lineListener) {
         this.activityNeedle = activityNeedle;
         this.initialWaitMs = initialWaitMs;
         this.callback = callback;
+        this.lineListener = lineListener;
     }
 
     public synchronized void start() {
@@ -111,6 +121,9 @@ public class LogcatWatcher {
         while (running && (line = reader.readLine()) != null) {
             if (AvisoMatcher.matches(line, activityNeedle)) {
                 callback.onDetected();
+            }
+            if (lineListener != null) {
+                lineListener.onLine(line);
             }
         }
     }

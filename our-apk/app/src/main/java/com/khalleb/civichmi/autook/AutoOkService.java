@@ -14,6 +14,11 @@ public class AutoOkService extends Service {
     private Thread watchdogThread;
     private volatile boolean watchdogRunning;
 
+    private CameraVolumeController cameraController;
+    private AudioMuteGuard muteGuard;
+    private AutoAppLauncher appLauncher;
+    private GpsTimeSync timeSync;
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -29,12 +34,30 @@ public class AutoOkService extends Service {
             return START_NOT_STICKY;
         }
 
+        initSubsystems();
+
         String action = intent == null ? null : intent.getAction();
         if (AutoOkConfig.ACTION_FORCE_RESTART.equals(action)) {
             String source = intent.getStringExtra("source");
             String cause = intent.getStringExtra("cause");
             FileLogger.log("FORCE_RESTART source=" + source + " cause=" + cause);
             forceRestartWatcher();
+            return START_STICKY;
+        }
+
+        if (AutoOkConfig.ACTION_DECREASE_VOLUME.equals(action)) {
+            if (cameraController != null) {
+                cameraController.onCameraEnter();
+            }
+            return START_STICKY;
+        }
+
+        if (AutoOkConfig.ACTION_RESTORE_VOLUME.equals(action) ||
+            AutoOkConfig.ACTION_EXIT_REAR_WIDE_CAMERA.equals(action) ||
+            AutoOkConfig.ACTION_RESUME_CAMERA.equals(action)) {
+            if (cameraController != null) {
+                cameraController.onCameraExit();
+            }
             return START_STICKY;
         }
 
@@ -49,10 +72,39 @@ public class AutoOkService extends Service {
         return START_STICKY;
     }
 
+    private void initSubsystems() {
+        if (cameraController == null) {
+            cameraController = new CameraVolumeController(this);
+        }
+        if (muteGuard == null) {
+            muteGuard = new AudioMuteGuard(this, cameraController);
+            muteGuard.start();
+        }
+        if (appLauncher == null) {
+            appLauncher = new AutoAppLauncher(this);
+        }
+        if (timeSync == null) {
+            timeSync = new GpsTimeSync(this);
+            timeSync.start();
+        }
+    }
+
     @Override
     public void onDestroy() {
         stopWatchdog();
         stopWatcher();
+        if (muteGuard != null) {
+            muteGuard.stop();
+            muteGuard = null;
+        }
+        if (timeSync != null) {
+            timeSync.stop();
+            timeSync = null;
+        }
+        if (cameraController != null) {
+            cameraController.destroy();
+            cameraController = null;
+        }
         FileLogger.log("service destroyed");
         super.onDestroy();
     }
@@ -70,7 +122,8 @@ public class AutoOkService extends Service {
         return new LogcatWatcher(
             AutoOkConfig.AVISO_ACTIVITY_NAME,
             AutoOkConfig.BOOT_INITIAL_WAIT_MS,
-            new AvisoCallback(this)
+            new AvisoCallback(this),
+            new CameraLineListener(this)
         );
     }
 
@@ -84,6 +137,32 @@ public class AutoOkService extends Service {
         @Override
         public void onDetected() {
             service.onAvisoDetected();
+        }
+    }
+
+    private static final class CameraLineListener implements LogcatWatcher.LineListener {
+        private final AutoOkService service;
+
+        CameraLineListener(AutoOkService service) {
+            this.service = service;
+        }
+
+        @Override
+        public void onLine(String line) {
+            service.onLogcatLine(line);
+        }
+    }
+
+    private void onLogcatLine(String line) {
+        if (cameraController == null) {
+            return;
+        }
+        if (CameraActivityMatcher.isCameraActivity(line)) {
+            cameraController.onCameraEnter();
+        } else if (CameraActivityMatcher.isNonCameraActivity(line)) {
+            if (cameraController.isDucked()) {
+                cameraController.onCameraExit();
+            }
         }
     }
 
@@ -107,6 +186,11 @@ public class AutoOkService extends Service {
         );
         lastTapAtMs = System.currentTimeMillis();
         FileLogger.log("tap ok=" + ok + " coords=" + AutoOkConfig.TAP_FALLBACK_COORDS.length);
+
+        if (appLauncher != null) {
+            appLauncher.scheduleLaunch();
+        }
+
         rearmWatcher();
     }
 

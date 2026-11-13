@@ -18,6 +18,10 @@ public final class Shell {
         return suExec("input tap " + x + " " + y);
     }
 
+    public static boolean su(String command) {
+        return suExec(command);
+    }
+
     public static boolean suTapWithFallback(int[][] coords, int intervalMs) {
         for (int i = 0; i < coords.length; i++) {
             int[] c = coords[i];

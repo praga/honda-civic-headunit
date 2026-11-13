@@ -1,0 +1,18 @@
+package com.khalleb.civichmi.autook;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+
+public class CameraBroadcastReceiver extends BroadcastReceiver {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (intent == null || intent.getAction() == null) {
+            return;
+        }
+        Intent svc = new Intent(context, AutoOkService.class);
+        svc.setAction(intent.getAction());
+        context.startService(svc);
+    }
+}

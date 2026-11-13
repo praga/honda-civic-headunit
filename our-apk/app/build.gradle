@@ -10,8 +10,8 @@ android {
         applicationId 'com.khalleb.civichmi.autook'
         minSdk 17
         targetSdk 17
-        versionCode 9
-        versionName '0.5.4'
+        versionCode 10
+        versionName '0.6.0'
     }
 
     buildTypes {
@@ -19,6 +19,10 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {

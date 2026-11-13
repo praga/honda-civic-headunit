@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.khalleb.civichmi.autook"
-    android:versionCode="9"
-    android:versionName="0.5.4">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-sdk android:minSdkVersion="17" android:targetSdkVersion="17" />
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <application
         android:label="@string/app_name"
         android:allowBackup="false">
+
+        <receiver
+            android:name=".CameraBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.mitsubishielectric.android.action.camera.EXIT_REAR_WIDE_CAMERA" />
+                <action android:name="com.mitsubishielectric.android.action.camera.ACTION_RESUME_CAMERA" />
+                <action android:name="com.khalleb.civichmi.autook.DECREASE_VOLUME" />
+                <action android:name="com.khalleb.civichmi.autook.RESTORE_VOLUME" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".BootReceiver"
