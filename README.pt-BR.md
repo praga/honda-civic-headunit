@@ -98,6 +98,7 @@ Um segundo patch (Fase 10.1) reduz uma tela intermediária de ecoscore de ~6 s p
 | Carro | DA Version | Mercado | Rom type | Status |
 |---|---|---|---|---|
 | Honda Civic 2017 EXL | `1.F187.16` | 🇧🇷 Brasil | `0040` | ✅ AutoOk deployado 2026-10-16 · Fase 10 deployada 2026-10-29 |
+| Honda Civic Sedan (Gr085) | `1.F194.44` | 🇦🇺 Austrália / Oceania (`KQ`) | `0040` | ✅ AutoOk deployado 2026-11-14 |
 
 ### 🤷 Potencialmente compatível (não testado)
 

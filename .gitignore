@@ -80,6 +80,7 @@ venv/
 # Logs/dumps gerados em deploys reais na central do dono do projeto.
 # Não distribuir — podem conter dados identificadores da central.
 docs/fase7-deploy-2026-10-16/artefatos-deploy/
+docs/logs-oceania-*/
 
 # ---- Pessoal ----
 # Lista de pendências do dono, não vai pro público.

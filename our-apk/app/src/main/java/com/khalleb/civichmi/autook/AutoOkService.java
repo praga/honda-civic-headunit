@@ -18,6 +18,7 @@ public class AutoOkService extends Service {
     private AudioMuteGuard muteGuard;
     private AutoAppLauncher appLauncher;
     private GpsTimeSync timeSync;
+    private WirelessAdbController wirelessAdb;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -87,12 +88,20 @@ public class AutoOkService extends Service {
             timeSync = new GpsTimeSync(this);
             timeSync.start();
         }
+        if (wirelessAdb == null) {
+            wirelessAdb = new WirelessAdbController(this);
+            wirelessAdb.start();
+        }
     }
 
     @Override
     public void onDestroy() {
         stopWatchdog();
         stopWatcher();
+        if (wirelessAdb != null) {
+            wirelessAdb.stop();
+            wirelessAdb = null;
+        }
         if (muteGuard != null) {
             muteGuard.stop();
             muteGuard = null;

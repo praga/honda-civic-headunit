@@ -67,6 +67,10 @@ public final class AutoOkConfig {
     public static final long GPS_TIME_SYNC_MAX_DRIFT_SEC = 5L;
     public static final long GPS_TIME_SYNC_MIN_INTERVAL_MS = 60000L;
 
+    // Wireless ADB (WirelessAdbController)
+    public static final boolean ENABLE_WIRELESS_ADB = true;
+    public static final int WIRELESS_ADB_PORT = 5555;
+
     private AutoOkConfig() {
     }
 }

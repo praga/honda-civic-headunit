@@ -35,6 +35,7 @@ Veja se sua safra já foi reportada:
 | DA Version | Mercado | Rom type | Status | Fonte |
 |---|---|---|---|---|
 | `1.F187.16` | BR | `0040` | ✅ Deployado com sucesso | Este projeto, 2026-10-16 |
+| `1.F194.44` | AU / Oceania (`KQ`) | `0040` | ✅ Deployado com sucesso | Este projeto, 2026-11-14 |
 | `1.F1A5.15` | US | `1115` | ✅ EvilValet confirmado | ic1101 docs/updates.md |
 | `1.F197.70` | EU | `2250` | ⚠️ Update file público, não deployado | ic1101 docs/updates.md |
 | ...outras | — | — | ❓ Não reportado | — |
