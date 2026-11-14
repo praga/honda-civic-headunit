@@ -111,7 +111,7 @@ public class LogcatWatcher {
     private Process startLogcat() throws IOException {
         Process p = Runtime.getRuntime().exec("su");
         java.io.DataOutputStream out = new java.io.DataOutputStream(p.getOutputStream());
-        out.writeBytes("exec logcat -b events -v threadtime am_create_activity:I am_new_intent:I *:S 2>&1\n");
+        out.writeBytes("exec logcat -b events -v threadtime am_create_activity:I am_new_intent:I am_finish_activity:I *:S 2>&1\n");
         out.flush();
         return p;
     }

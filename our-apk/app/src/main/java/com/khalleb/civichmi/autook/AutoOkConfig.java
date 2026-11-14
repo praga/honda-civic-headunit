@@ -37,13 +37,15 @@ public final class AutoOkConfig {
 
     // Reverse Camera Volume Ducking
     public static final boolean ENABLE_REVERSE_CAMERA_DUCK = true;
-    public static final int REVERSE_CAMERA_DUCK_STEPS = 6;
-    public static final long REVERSE_CAMERA_DUCK_TIMEOUT_MS = 30000L;
+    public static final int REVERSE_CAMERA_DUCK_STEPS = 5;
+    public static final long REVERSE_CAMERA_DUCK_TIMEOUT_MS = 60000L;
     public static final String CAMERA_PACKAGE_PREFIX = "com.mitsubishielectric.ada.app.camera";
     public static final String ACTION_EXIT_REAR_WIDE_CAMERA =
         "com.mitsubishielectric.android.action.camera.EXIT_REAR_WIDE_CAMERA";
     public static final String ACTION_RESUME_CAMERA =
         "com.mitsubishielectric.android.action.camera.ACTION_RESUME_CAMERA";
+    public static final String ACTION_CAMERA_FINISH =
+        "com.mitsubishielectric.ada.appservice.videomanager.CAMERA_FINISH";
     public static final String ACTION_DECREASE_VOLUME =
         "com.khalleb.civichmi.autook.DECREASE_VOLUME";
     public static final String ACTION_RESTORE_VOLUME =

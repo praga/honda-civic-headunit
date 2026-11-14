@@ -1,22 +1,30 @@
 package com.khalleb.civichmi.autook;
 
 import android.content.Context;
-import android.media.AudioManager;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CameraVolumeController {
 
+    public static final int KEYCODE_VOLUME_UP = 24;
+    public static final int KEYCODE_VOLUME_DOWN = 25;
+
     private final Context context;
-    private final AudioManager audioManager;
+    private final ExecutorService executor;
     private volatile boolean ducked;
-    private volatile int originalVolume = -1;
+    private volatile int duckedStepsApplied;
     private Timer timeoutTimer;
 
     public CameraVolumeController(Context context) {
+        this(context, Executors.newSingleThreadExecutor());
+    }
+
+    public CameraVolumeController(Context context, ExecutorService executor) {
         this.context = context;
-        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        this.executor = executor;
     }
 
     public synchronized boolean isDucked() {
@@ -24,14 +32,15 @@ public class CameraVolumeController {
     }
 
     public synchronized int getOriginalVolume() {
-        return originalVolume;
+        return duckedStepsApplied;
+    }
+
+    public synchronized int getDuckedStepsApplied() {
+        return duckedStepsApplied;
     }
 
     public synchronized void onCameraEnter() {
         if (!AutoOkConfig.ENABLE_REVERSE_CAMERA_DUCK) {
-            return;
-        }
-        if (audioManager == null) {
             return;
         }
         if (ducked) {
@@ -39,16 +48,19 @@ public class CameraVolumeController {
             return;
         }
 
-        try {
-            int current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-            originalVolume = current;
-            int target = calculateDuckedVolume(current, AutoOkConfig.REVERSE_CAMERA_DUCK_STEPS);
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
-            ducked = true;
-            resetTimeoutTimer();
-            FileLogger.log("CameraVolumeController: ducked volume " + current + " -> " + target);
-        } catch (Throwable t) {
-            FileLogger.log("CameraVolumeController: error on duck: " + t.getMessage());
+        final int steps = AutoOkConfig.REVERSE_CAMERA_DUCK_STEPS;
+        ducked = true;
+        duckedStepsApplied = steps;
+        resetTimeoutTimer();
+        FileLogger.log("CameraVolumeController: onCameraEnter - stepping down master volume (" + steps + " steps)");
+
+        if (executor != null) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    sendVolumeKeyevents(KEYCODE_VOLUME_DOWN, steps);
+                }
+            });
         }
     }
 
@@ -57,23 +69,36 @@ public class CameraVolumeController {
             return;
         }
         cancelTimeoutTimer();
-        if (audioManager == null) {
-            ducked = false;
-            originalVolume = -1;
-            return;
-        }
+        final int steps = duckedStepsApplied;
+        ducked = false;
+        duckedStepsApplied = 0;
+        FileLogger.log("CameraVolumeController: onCameraExit - restoring master volume (" + steps + " steps)");
 
-        try {
-            int current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-            if (originalVolume >= 0) {
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, originalVolume, 0);
-                FileLogger.log("CameraVolumeController: restored volume " + current + " -> " + originalVolume);
-            }
-        } catch (Throwable t) {
-            FileLogger.log("CameraVolumeController: error on restore: " + t.getMessage());
-        } finally {
-            ducked = false;
-            originalVolume = -1;
+        if (executor != null) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    sendVolumeKeyevents(KEYCODE_VOLUME_UP, steps);
+                }
+            });
+        }
+    }
+
+    public static String buildVolumeKeyeventsScript(int keyCode, int count) {
+        if (count <= 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            sb.append("input keyevent ").append(keyCode).append("\n");
+        }
+        return sb.toString();
+    }
+
+    public static void sendVolumeKeyevents(int keyCode, int count) {
+        String script = buildVolumeKeyeventsScript(keyCode, count);
+        if (script.length() > 0) {
+            Shell.suExec(script);
         }
     }
 
@@ -85,7 +110,7 @@ public class CameraVolumeController {
             public void run() {
                 synchronized (CameraVolumeController.this) {
                     if (ducked) {
-                        FileLogger.log("CameraVolumeController: watchdog timeout (30s) reached, forcing restore");
+                        FileLogger.log("CameraVolumeController: watchdog timeout reached, forcing restore");
                         onCameraExit();
                     }
                 }
@@ -107,6 +132,12 @@ public class CameraVolumeController {
         cancelTimeoutTimer();
         if (ducked) {
             onCameraExit();
+        }
+        if (executor != null) {
+            try {
+                executor.shutdown();
+            } catch (Throwable ignored) {
+            }
         }
     }
 

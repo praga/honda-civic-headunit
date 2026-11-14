@@ -55,7 +55,8 @@ public class AutoOkService extends Service {
 
         if (AutoOkConfig.ACTION_RESTORE_VOLUME.equals(action) ||
             AutoOkConfig.ACTION_EXIT_REAR_WIDE_CAMERA.equals(action) ||
-            AutoOkConfig.ACTION_RESUME_CAMERA.equals(action)) {
+            AutoOkConfig.ACTION_RESUME_CAMERA.equals(action) ||
+            AutoOkConfig.ACTION_CAMERA_FINISH.equals(action)) {
             if (cameraController != null) {
                 cameraController.onCameraExit();
             }
@@ -168,7 +169,7 @@ public class AutoOkService extends Service {
         }
         if (CameraActivityMatcher.isCameraActivity(line)) {
             cameraController.onCameraEnter();
-        } else if (CameraActivityMatcher.isNonCameraActivity(line)) {
+        } else if (CameraActivityMatcher.isCameraFinish(line) || CameraActivityMatcher.isNonCameraActivity(line)) {
             if (cameraController.isDucked()) {
                 cameraController.onCameraExit();
             }

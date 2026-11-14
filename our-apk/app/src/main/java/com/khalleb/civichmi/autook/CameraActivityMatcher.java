@@ -2,6 +2,8 @@ package com.khalleb.civichmi.autook;
 
 public final class CameraActivityMatcher {
 
+    public static final String EVENT_FINISH = "am_finish_activity";
+
     private CameraActivityMatcher() {
     }
 
@@ -13,6 +15,13 @@ public final class CameraActivityMatcher {
             return false;
         }
         return line.contains(AutoOkConfig.CAMERA_PACKAGE_PREFIX);
+    }
+
+    public static boolean isCameraFinish(String line) {
+        if (line == null) {
+            return false;
+        }
+        return line.contains(EVENT_FINISH) && line.contains(AutoOkConfig.CAMERA_PACKAGE_PREFIX);
     }
 
     public static boolean isNonCameraActivity(String line) {
