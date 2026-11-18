@@ -11,10 +11,10 @@
 [![Platform](https://img.shields.io/badge/platform-Android_4.2.2_%7C_Tegra_3-blue)]()
 [![Firmware](https://img.shields.io/badge/tested_firmware-1.F187.16_BR-orange)]()
 [![Phase 10](https://img.shields.io/badge/Phase_10-warning_removed_2026--10--29-success)](docs/en/fase10-deploy-2026-10-29/README.md)
-[![AutoOk](https://img.shields.io/badge/AutoOk-v0.5.4_safety_net-informational)]()
-[![CI](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml)
+[![AutoOk](https://img.shields.io/badge/AutoOk-v0.8.0_automotive_suite-informational)](https://github.com/praga/honda-civic-headunit/releases/tag/v0.8.0)
+[![CI](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml)
 
-[🇧🇷 Português](README.md) · 🇺🇸 **English**
+🇺🇸 **English** · [🇧🇷 Português](README.pt-BR.md)
 
 </div>
 
@@ -52,9 +52,16 @@ Honda has **never** released a configuration to disable this.
 
 Everything is delivered via **EvilValet** (discovered by [juniperspring.org](https://juniperspring.org/posts/honda-evil-valet/)) — a "fake" OTA package signed with the public AOSP testkey, which the head unit's `daupdater` accepts as if it were an official update.
 
-### Layer 1 — AutoOk (automatic safety net)
+### Layer 1 — AutoOk (Automotive Companion Suite & Safety Net)
 
-APK + `su` setuid installed into `/system/`. The APK monitors logcat, detects the warning Activity, and fires a simulated `input tap` at (400, 350). Warning used to appear for ~3 s and vanish on its own. Kept as a fallback: if the Layer 2 patch ever fails, this still dismisses the warning.
+APK + `su` setuid installed into `/system/app/AutoOk.apk`. Originally built as a disclaimer auto-tap safety net, `AutoOk` has evolved into a full automotive enhancement suite running natively on the head unit:
+- **Driving Restriction Bypass (Video & App Lockout Override)**: Overrides vehicle motion and parking brake restrictions natively by configuring `/data/data/whitelist-1.0.xml` regulations to `null`. Touchscreen operation and video playback remain fully accessible in motion across all apps (Waze, Google Maps, YouTube, VLC, Settings, Browser) without requiring unstable Xposed runtimes.
+- **Reverse Camera Master Volume Ducking**: Automatically steps hardware master volume down via root keyevents (`KEYCODE_VOLUME_DOWN`) when engaging reverse gear and restores it on exit across **all** audio sources (Apple CarPlay, Android Auto, FM/AM Radio, and Bluetooth).
+- **Automated Wireless ADB**: Automatically binds root ADB over Wi-Fi on port 5555 as soon as network connectivity is established.
+- **Audio Ducking / Mute Glitch Auto-Fix**: Periodically guards and restores audio stream volume if left muted at 0 following phone calls, navigation voice prompts, or Siri interruptions.
+- **GPS Satellite Time Auto-Sync**: Automatically synchronizes the Android system clock from GPS satellite timestamps for head units without factory cellular/navigation time synchronization.
+- **Auto-Start App on Boot**: Optionally auto-launches preferred navigation or media applications after startup.
+- **Disclaimer Fallback Tap**: If Layer 2 (Phase 10) is not deployed, monitors logcat and auto-dismisses the startup disclaimer screen in ~3 s.
 
 ### Layer 2 — Phase 10 (smali patch in DaLauncher — the definitive fix)
 

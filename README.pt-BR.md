@@ -11,8 +11,8 @@
 [![Platform](https://img.shields.io/badge/platform-Android_4.2.2_%7C_Tegra_3-blue)]()
 [![Safra](https://img.shields.io/badge/safra_testada-1.F187.16_BR-orange)]()
 [![Fase 10](https://img.shields.io/badge/Fase_10-aviso_removido_2026--10--29-success)](docs/fase10-deploy-2026-10-29/README.md)
-[![AutoOk](https://img.shields.io/badge/AutoOk-v0.5.4_safety_net-informational)]()
-[![CI](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khalleb/honda-civic-headunit/actions/workflows/ci.yml)
+[![AutoOk](https://img.shields.io/badge/AutoOk-v0.8.0_suíte_automotiva-informational)](https://github.com/praga/honda-civic-headunit/releases/tag/v0.8.0)
+[![CI](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml)
 
 [🇺🇸 English](README.md) · 🇧🇷 **Português**
 
@@ -50,9 +50,16 @@ A Honda **nunca** liberou uma configuração pra desabilitar isso.
 
 Tudo é entregue via **EvilValet** (descoberta por [juniperspring.org](https://juniperspring.org/posts/honda-evil-valet/)) — um pacote OTA "falso" assinado com a testkey AOSP pública, que o `daupdater` do carro aceita como se fosse update oficial.
 
-### Camada 1 — AutoOk (safety net automático)
+### Camada 1 — AutoOk (Suíte de Aprimoramentos Automotivos e Safety Net)
 
-APK + `su` setuid instalados em `/system/`. O APK monitora o logcat, detecta a Activity do aviso aparecer e dispara um `input tap` simulado em (400, 350). Aviso aparecia por ~3 s e sumia sozinho. Rede de segurança: se o patch da Camada 2 falhar por qualquer motivo, essa rota continua tapando.
+APK + `su` setuid instalados em `/system/app/AutoOk.apk`. Originalmente criado como um safety net para dispensar o aviso, o `AutoOk` evoluiu para uma suíte completa de utilitários automotivos nativos:
+- **Bypass de Restrição em Movimento (Vídeo e Apps sem Bloqueio)**: Desbloqueia nativamente telas e toque em movimento ao configurar as regulações de `/data/data/whitelist-1.0.xml` para `null`. Vídeos e apps (Waze, Google Maps, YouTube, VLC, Configurações, Navegador) funcionam com toque pleno com o carro em movimento sem depender de runtimes instáveis de Xposed.
+- **Ducking de Volume Master na Câmera de Ré**: Reduz o volume do DSP do veículo via keyevents de hardware (`KEYCODE_VOLUME_DOWN`) ao engatar a ré e restaura na saída em **todas** as fontes de áudio (Apple CarPlay, Android Auto, Rádio FM/AM e Bluetooth).
+- **Wireless ADB Automático**: Habilita e expõe automaticamente o ADB root via Wi-Fi na porta 5555 assim que a central conecta a uma rede.
+- **Auto-Correção do Bug do Mudo**: Monitora e restaura o volume caso o áudio permaneça mutado em 0 após chamadas, prompts de GPS ou comandos da Siri.
+- **Auto-Sincronização de Hora por GPS**: Sincroniza o relógio do sistema diretamente via satélites GPS para centrais sem TCU celular ou GPS nativo.
+- **Auto-Inicialização de Aplicativo no Boot**: Inicia opcionalmente o app de navegação ou mídia de sua preferência após a partida.
+- **Tap Automático do Aviso (Fallback)**: Caso o patch definitivo da Camada 2 (Fase 10) não esteja instalado, monitora o logcat e dispensa a tela de aviso em ~3 s.
 
 ### Camada 2 — Fase 10 (patch smali no DaLauncher — a solução definitiva)
 
