@@ -1,22 +1,39 @@
 <div align="center">
 
-<img src="docs/images/logo.svg" alt="Honda Civic G10 Skip Disclaimer" width="180"/>
+<img src="docs/images/logo.svg" alt="Honda Civic G10 Head Unit Suite" width="180"/>
 
-# Honda Civic G10 — Skip Disclaimer
+# Honda Civic G10 — Head Unit Utility & Enhancement Suite
 
-**Automatically dismiss the "Warning" disclaimer screen that appears every time you turn on your Honda Civic**
+**Open-source automotive utility suite for 10th-Gen Honda Civic infotainment units (Mitsubishi Andromeda / Tegra 3): permanent disclaimer removal, driving video & app lockout override, reverse camera master volume ducking, wireless ADB, and audio recovery.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-complete-brightgreen)](docs/en/fase10-deploy-2026-10-29/README.md)
 [![Platform](https://img.shields.io/badge/platform-Android_4.2.2_%7C_Tegra_3-blue)]()
-[![Firmware](https://img.shields.io/badge/tested_firmware-1.F187.16_BR-orange)]()
-[![Phase 10](https://img.shields.io/badge/Phase_10-warning_removed_2026--10--29-success)](docs/en/fase10-deploy-2026-10-29/README.md)
+[![Firmware](https://img.shields.io/badge/tested_firmware-1.F187.16_BR_%7C_1.F194.44_AU-orange)]()
+[![Phase 10](https://img.shields.io/badge/Phase_10-disclaimer_removed-success)](docs/en/fase10-deploy-2026-10-29/README.md)
 [![AutoOk](https://img.shields.io/badge/AutoOk-v0.8.0_automotive_suite-informational)](https://github.com/praga/honda-civic-headunit/releases/tag/v0.8.0)
 [![CI](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml)
 
 🇺🇸 **English** · [🇧🇷 Português](README.pt-BR.md)
 
 </div>
+
+---
+
+## ⚡ Feature Matrix
+
+| Feature | Subsystem | Mechanism | Delivery |
+|---|---|---|---|
+| **Definitive Disclaimer Elimination** | Startup / Boot | 1-instruction smali bytecode patch in `DaLauncher.apk` (`if-nez` → `goto`) | **Layer 2 (Phase 10)** |
+| **Eco-Score Boot Screen Shortening** | Startup / Boot | Smali timer reduction (`6s` → `1s`) in `DaLauncher.apk` | **Layer 2 (Phase 10.1)** |
+| **Driving Restriction Bypass** | Video & Apps in Motion | Whitelist regulation sanitizer (`<regulation>null</regulation>`) + dynamic app monitor | **Layer 1 (AutoOk v0.8.0)** |
+| **Reverse Camera Master Volume Ducking** | Vehicle Audio DSP | Root keyevents (`KEYCODE_VOLUME_DOWN`/`UP`) across FM/AM, CarPlay, AA, and BT | **Layer 1 (AutoOk v0.7.1)** |
+| **Automated Wireless ADB** | Remote Dev & Access | Network state listener + port 5555 root daemon | **Layer 1 (AutoOk v0.7.0)** |
+| **Audio Ducking / Mute Glitch Auto-Fix** | Audio Recovery | Periodic stream guard recovering from stuck-at-0 CarPlay/Siri mute | **Layer 1 (AutoOk v0.6.0)** |
+| **GPS Satellite Time Auto-Sync** | System Clock | Satellite UTC fix listener + root `date -s` clock calibration | **Layer 1 (AutoOk v0.6.0)** |
+| **Auto-Start Preferred App on Boot** | App Launch | Configurable delayed Intent launch + optional PLAY keyevent | **Layer 1 (AutoOk v0.6.0)** |
+| **Disclaimer Auto-Tap Safety Net** | Fallback Disclaimer | Logcat watcher + simulated input tap on `OpeningDivideActivity` | **Layer 1 (AutoOk v0.5.4)** |
+| **Root Shell Access (`su`)** | System Security | Setuid `su` binary in `/system/xbin/` deployed via signed OTA | **EvilValet OTA** |
 
 ---
 
@@ -191,12 +208,12 @@ Infrastructure that lives alongside the project and works for other HUs with the
 
 ## 🗺️ Where this is heading
 
-Original goal achieved on 2026-10-29. Everything below is exploratory; details in [`ROADMAP.md`](ROADMAP.md).
+The primary goals (disclaimer elimination, audio ducking, wireless ADB, driving restriction bypass) are complete and verified in-car across multiple firmware variants. Ongoing exploratory work (details in [`ROADMAP.md`](ROADMAP.md)):
 
-- **Phase 9 — backup camera via official API.** Replace the current logcat polling with a bind on `ICameraAPServiceReverseSignalListener`, with `ACTION_RESUME_CAMERA` as fallback. TX codes for `IVehicleInfoManagerApService` are already mapped (via `alexpotv/Clusters`), including the `MICU_BCM`/`MICU_ICU` signal that carries the reverse light.
-- Dump the real `com.honda.displayaudio.whitelist.apk` to confirm the XML format (today it's inferred from the parser).
-- Try `persist.sys.keyoff_reboot=1` — theoretically forces a cold boot on every keyoff and eliminates the whole LP0 complexity.
-- Swap `/system/xbin/su` for the official SuperSU — the current one turned out to be KingoSU (finding from the GitHub landscape scan on 2026-10-27).
+- **Phase 9 — backup camera via official API.** Replacing logcat polling with direct IPC bind on `ICameraAPServiceReverseSignalListener` or `IVehicleInfoManagerApService` (`MICU_BCM`/`MICU_ICU` reverse light CAN signal).
+- Dump the real `com.honda.displayaudio.whitelist.apk` binary to explore custom carrier assets.
+- Experiment with `persist.sys.keyoff_reboot=1` to force clean cold boots on key-off.
+- Swap `/system/xbin/su` for the official SuperSU.
 
 ---
 

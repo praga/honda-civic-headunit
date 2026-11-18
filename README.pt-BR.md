@@ -1,22 +1,39 @@
 <div align="center">
 
-<img src="docs/images/logo.svg" alt="Honda Civic G10 Skip Disclaimer" width="180"/>
+<img src="docs/images/logo.svg" alt="Honda Civic G10 Suíte Multimídia" width="180"/>
 
-# Honda Civic G10 — Skip Disclaimer
+# Honda Civic G10 — Suíte de Utilitários e Aprimoramentos
 
-**Elimine automaticamente a tela de "Aviso" que aparece sempre que você liga seu Honda Civic**
+**Suíte de utilitários automotivos de código aberto para a central multimídia do Honda Civic G10 (Mitsubishi Andromeda / Tegra 3): eliminação definitiva do aviso, bypass de restrição de vídeo e apps em movimento, ducking de volume na ré, wireless ADB e recuperação de áudio.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-conclu%C3%ADdo-brightgreen)](docs/fase10-deploy-2026-10-29/README.md)
 [![Platform](https://img.shields.io/badge/platform-Android_4.2.2_%7C_Tegra_3-blue)]()
-[![Safra](https://img.shields.io/badge/safra_testada-1.F187.16_BR-orange)]()
-[![Fase 10](https://img.shields.io/badge/Fase_10-aviso_removido_2026--10--29-success)](docs/fase10-deploy-2026-10-29/README.md)
+[![Safra](https://img.shields.io/badge/safra_testada-1.F187.16_BR_%7C_1.F194.44_AU-orange)]()
+[![Fase 10](https://img.shields.io/badge/Fase_10-aviso_removido-success)](docs/fase10-deploy-2026-10-29/README.md)
 [![AutoOk](https://img.shields.io/badge/AutoOk-v0.8.0_suíte_automotiva-informational)](https://github.com/praga/honda-civic-headunit/releases/tag/v0.8.0)
 [![CI](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/praga/honda-civic-headunit/actions/workflows/ci.yml)
 
 [🇺🇸 English](README.md) · 🇧🇷 **Português**
 
 </div>
+
+---
+
+## ⚡ Matriz de Recursos
+
+| Recurso | Subsistema | Mecanismo | Entrega |
+|---|---|---|---|
+| **Eliminação Definitiva do Aviso** | Inicialização / Boot | Patch smali de 1 instrução no `DaLauncher.apk` (`if-nez` → `goto`) | **Camada 2 (Fase 10)** |
+| **Aceleração da Tela de Ecoscore** | Inicialização / Boot | Redução de timer smali (`6s` → `1s`) no `DaLauncher.apk` | **Camada 2 (Fase 10.1)** |
+| **Bypass de Restrição em Movimento** | Vídeo e Apps em Movimento | Sanitização de whitelist (`<regulation>null</regulation>`) + monitor de apps | **Camada 1 (AutoOk v0.8.0)** |
+| **Ducking de Volume na Ré** | Áudio / DSP do Carro | Keyevents root de hardware (`VOLUME_DOWN`/`UP`) em todas as fontes | **Camada 1 (AutoOk v0.7.1)** |
+| **Wireless ADB Automático** | Acesso Remoto | Listener de conectividade de rede + daemon root na porta 5555 | **Camada 1 (AutoOk v0.7.0)** |
+| **Auto-Correção do Bug do Mudo** | Recuperação de Áudio | Guardião de stream que recupera áudio travado em 0 pós-CarPlay/Siri | **Camada 1 (AutoOk v0.6.0)** |
+| **Auto-Sincronização de Hora por GPS** | Relógio do Sistema | Fix UTC de satélites GPS + calibração de relógio com `date -s` root | **Camada 1 (AutoOk v0.6.0)** |
+| **Auto-Inicialização de Aplicativo** | Lançamento de Apps | Intent com delay configurável + disparo opcional de tecla PLAY | **Camada 1 (AutoOk v0.6.0)** |
+| **Tap Automático do Aviso (Safety Net)** | Fallback de Aviso | Monitoramento de logcat + tap simulado em `OpeningDivideActivity` | **Camada 1 (AutoOk v0.5.4)** |
+| **Acesso Root (`su`)** | Segurança do Sistema | Binário `su` setuid em `/system/xbin/` via pacote OTA assinado | **Pacote OTA EvilValet** |
 
 ---
 
