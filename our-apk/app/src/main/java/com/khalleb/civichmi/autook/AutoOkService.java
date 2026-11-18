@@ -43,6 +43,14 @@ public class AutoOkService extends Service {
             String cause = intent.getStringExtra("cause");
             FileLogger.log("FORCE_RESTART source=" + source + " cause=" + cause);
             forceRestartWatcher();
+            if (AutoOkConfig.ENABLE_DRIVING_RESTRICTION_BYPASS) {
+                DrivingRestrictionBypass.applyBypassAsync(this);
+            }
+            return START_STICKY;
+        }
+
+        if (AutoOkConfig.ACTION_APPLY_DRIVING_BYPASS.equals(action)) {
+            DrivingRestrictionBypass.applyBypassAsync(this);
             return START_STICKY;
         }
 
@@ -92,6 +100,9 @@ public class AutoOkService extends Service {
         if (wirelessAdb == null) {
             wirelessAdb = new WirelessAdbController(this);
             wirelessAdb.start();
+        }
+        if (AutoOkConfig.ENABLE_DRIVING_RESTRICTION_BYPASS) {
+            DrivingRestrictionBypass.applyBypassAsync(this);
         }
     }
 

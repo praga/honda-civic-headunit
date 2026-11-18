@@ -46,6 +46,17 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".PackageInstallReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".AutoOkService"
             android:exported="false" />

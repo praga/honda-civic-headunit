@@ -73,6 +73,12 @@ public final class AutoOkConfig {
     public static final boolean ENABLE_WIRELESS_ADB = true;
     public static final int WIRELESS_ADB_PORT = 5555;
 
+    // Driving Restriction Bypass (DrivingRestrictionBypass)
+    public static final boolean ENABLE_DRIVING_RESTRICTION_BYPASS = true;
+    public static final String WHITELIST_PATH = "/data/data/whitelist-1.0.xml";
+    public static final String ACTION_APPLY_DRIVING_BYPASS =
+        "com.khalleb.civichmi.autook.APPLY_DRIVING_BYPASS";
+
     private AutoOkConfig() {
     }
 }
